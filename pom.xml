@@ -3,9 +3,8 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>io.techasylum.kafka</groupId>
-    <artifactId>kafka-document-statestore</artifactId>
+    <groupId>com.korfinancial</groupId>
+    <artifactId>kafka-statestores-no2</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>Kafka :: StateStore :: Document</name>
 
@@ -14,7 +13,23 @@
         <maven.compiler.target>17</maven.compiler.target>
         <kafka-streams.version>3.0.0</kafka-streams.version>
         <nitrite.version>3.4.3</nitrite.version>
+        <kor.repository>KOR-Financial/kafka-statestores-no2</kor.repository>
     </properties>
+
+    <scm>
+        <connection>scm:git:git@github.com:${kor.repository}.git</connection>
+        <url>scm:git:git@github.com/${kor.repository}</url>
+        <developerConnection>scm:git:https://github.com/${kor.repository}.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/${kor.repository}</url>
+        </repository>
+    </distributionManagement>
 
     <dependencies>
         <dependency>
