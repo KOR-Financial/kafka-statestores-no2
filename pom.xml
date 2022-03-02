@@ -17,7 +17,7 @@
     <scm>
         <connection>scm:git:git@github.com:${kor.repository}.git</connection>
         <url>scm:git:git@github.com/${kor.repository}</url>
-        <developerConnection>scm:git:https://github.com/${kor.repository}.git</developerConnection>
+        <developerConnection>scm:git:git@github.com/${kor.repository}.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
