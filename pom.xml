@@ -12,12 +12,13 @@
         <kafka-streams.version>3.0.0</kafka-streams.version>
         <nitrite.version>3.4.3</nitrite.version>
         <kor.repository>KOR-Financial/kafka-statestores-no2</kor.repository>
+        <project.scm.id>github</project.scm.id>
     </properties>
 
     <scm>
         <connection>scm:git:git@github.com:${kor.repository}.git</connection>
         <url>scm:git:git@github.com/${kor.repository}</url>
-        <developerConnection>scm:git:git@github.com/${kor.repository}.git</developerConnection>
+        <developerConnection>scm:git:https://github.com/${kor.repository}.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
