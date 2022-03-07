@@ -16,6 +16,10 @@ public class NitriteQueryCursorWrapper<V> implements QueryCursor<V> {
         this.cursor = cursor;
     }
 
+    public Cursor<V> getCursor() {
+        return cursor;
+    }
+
     @NotNull
     @Override
     public Iterator<V> iterator() {

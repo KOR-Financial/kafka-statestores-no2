@@ -18,6 +18,7 @@ import org.apache.kafka.streams.processor.internals.ProcessorContextUtils;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.processor.internals.SerdeGetter;
 import org.apache.kafka.streams.state.StateSerdes;
+import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.Nitrite;
 import org.dizitart.no2.NitriteBuilder;
 import org.dizitart.no2.exceptions.NitriteException;
@@ -37,7 +38,7 @@ import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.p
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareValueSerde;
 import static org.apache.kafka.streams.processor.internals.ProcessorContextUtils.asInternalProcessorContext;
 
-public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter> {
+public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, FindOptions> {
     final String name;
     final Serde<K> keySerde;
     final Serde<V> valueSerde;
@@ -172,11 +173,32 @@ public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter> {
     }
 
     @Override
-    public QueryCursor<V> find(ObjectFilter query) {
-        Objects.requireNonNull(query, "query cannot be null");
+    public QueryCursor<V> find(ObjectFilter filter) {
+        Objects.requireNonNull(filter, "filter cannot be null");
         validateStoreOpen();
 
-        Cursor<V> c = this.repo.find(query);
+        Cursor<V> c = this.repo.find(filter);
+
+        return new NitriteQueryCursorWrapper<>(c);
+    }
+
+    @Override
+    public QueryCursor<V> findWithOptions(FindOptions findOptions) {
+        Objects.requireNonNull(findOptions, "findOptions cannot be null");
+        validateStoreOpen();
+
+        Cursor<V> c = this.repo.find(findOptions);
+
+        return new NitriteQueryCursorWrapper<>(c);
+    }
+
+    @Override
+    public QueryCursor<V> findWithOptions(ObjectFilter filter, FindOptions findOptions) {
+        Objects.requireNonNull(filter, "filter cannot be null");
+        Objects.requireNonNull(findOptions, "findOptions cannot be null");
+        validateStoreOpen();
+
+        Cursor<V> c = this.repo.find(filter, findOptions);
 
         return new NitriteQueryCursorWrapper<>(c);
     }

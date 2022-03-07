@@ -4,6 +4,7 @@ import io.techasylum.kafka.statestore.document.DocumentStore;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
+import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.objects.ObjectFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +16,7 @@ public class MovieEventHandler implements Processor<String, MovieEvent, String, 
     private final Logger LOGGER = LoggerFactory.getLogger(MovieEventHandler.class);
 
     private ProcessorContext<String, MovieCommandFeedback> context;
-    private DocumentStore<String, Movie, ObjectFilter> store;
+    private DocumentStore<String, Movie, ObjectFilter, FindOptions> store;
 
     @Override
     public void init(ProcessorContext<String, MovieCommandFeedback> context) {

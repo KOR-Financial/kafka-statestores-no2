@@ -5,7 +5,7 @@ import org.apache.kafka.streams.processor.StateStore;
 
 import java.util.List;
 
-public interface DocumentStore<K, V, Q> extends StateStore, ReadonlyDocumentStore<K, V, Q> {
+public interface DocumentStore<K, V, F, O> extends StateStore, ReadOnlyDocumentStore<K, V, F, O> {
 
     /**
      * Update the value associated with this key.

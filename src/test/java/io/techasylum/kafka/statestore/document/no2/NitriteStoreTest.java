@@ -7,6 +7,7 @@ import io.techasylum.kafka.statestore.document.no2.movies.*;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
+import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.objects.ObjectFilter;
 import org.dizitart.no2.objects.filters.ObjectFilters;
 import org.junit.jupiter.api.AfterEach;
@@ -25,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class NitriteStoreTest {
     private TopologyTestDriver testDriver;
-    private DocumentStore<String, Movie, ObjectFilter> store;
+    private DocumentStore<String, Movie, ObjectFilter, FindOptions> store;
 
     private final Serde<Movie> movieSerde = new JsonSerde<>(Movie.class);
     private final Serde<MovieEvent> eventSerde = new JsonSerde<>(MovieEvent.class);
@@ -54,7 +55,7 @@ class NitriteStoreTest {
         props.setProperty(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
         testDriver = new TopologyTestDriver(topology, props);
 
-        store = (DocumentStore<String, Movie, ObjectFilter>) testDriver.getStateStore("movies");
+        store = (DocumentStore<String, Movie, ObjectFilter, FindOptions>) testDriver.getStateStore("movies");
 
         outputTopic = testDriver.createOutputTopic("movie-events", Serdes.String().deserializer(), eventSerde.deserializer());
         inputTopic = testDriver.createInputTopic("movie-events", Serdes.String().serializer(), eventSerde.serializer());
