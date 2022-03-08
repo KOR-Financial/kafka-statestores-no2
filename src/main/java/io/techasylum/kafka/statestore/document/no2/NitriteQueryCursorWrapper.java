@@ -1,7 +1,8 @@
 package io.techasylum.kafka.statestore.document.no2;
 
 import io.techasylum.kafka.statestore.document.QueryCursor;
-import org.dizitart.no2.objects.Cursor;
+import org.dizitart.no2.Cursor;
+import org.dizitart.no2.Document;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
@@ -9,30 +10,30 @@ import java.util.List;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
-public class NitriteQueryCursorWrapper<V> implements QueryCursor<V> {
-    private final Cursor<V> cursor;
+public class NitriteQueryCursorWrapper implements QueryCursor<Document> {
+    private final Cursor cursor;
 
-    public NitriteQueryCursorWrapper(Cursor<V> cursor) {
+    public NitriteQueryCursorWrapper(Cursor cursor) {
         this.cursor = cursor;
     }
 
-    public Cursor<V> getCursor() {
+    public Cursor getCursor() {
         return cursor;
     }
 
     @NotNull
     @Override
-    public Iterator<V> iterator() {
+    public Iterator<Document> iterator() {
         return this.cursor.iterator();
     }
 
     @Override
-    public void forEach(Consumer<? super V> action) {
+    public void forEach(Consumer<? super Document> action) {
         this.cursor.forEach(action);
     }
 
     @Override
-    public Spliterator<V> spliterator() {
+    public Spliterator<Document> spliterator() {
         return this.cursor.spliterator();
     }
 
@@ -52,12 +53,12 @@ public class NitriteQueryCursorWrapper<V> implements QueryCursor<V> {
     }
 
     @Override
-    public V firstOrDefault() {
+    public Document firstOrDefault() {
         return this.cursor.firstOrDefault();
     }
 
     @Override
-    public List<V> toList() {
+    public List<Document> toList() {
         return this.cursor.toList();
     }
 }

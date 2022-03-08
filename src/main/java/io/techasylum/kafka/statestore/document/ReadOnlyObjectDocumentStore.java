@@ -1,9 +1,8 @@
 package io.techasylum.kafka.statestore.document;
 
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
-import org.dizitart.no2.Cursor;
 
-public interface ReadOnlyDocumentStore<K, V, F, O> {
+public interface ReadOnlyObjectDocumentStore<K, V, F, O> {
 
     /**
      * Applies a filter on the store and returns a cursor to the
@@ -16,7 +15,7 @@ public interface ReadOnlyDocumentStore<K, V, F, O> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `filter` is null.
      */
-    Cursor find(F filter);
+    QueryCursor<V> find(F filter);
 
     /**
      * Returns a customized cursor to all objects in the store.
@@ -25,7 +24,7 @@ public interface ReadOnlyDocumentStore<K, V, F, O> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `findOptions` is null.
      */
-    Cursor findWithOptions(O options);
+    QueryCursor<V> findWithOptions(O options);
 
     /**
      * Applies a filter on the store and returns a customized cursor to the
@@ -40,7 +39,7 @@ public interface ReadOnlyDocumentStore<K, V, F, O> {
      * @throws NullPointerException if `filter` is null.
      * @throws NullPointerException if `findOptions` is null.
      */
-    Cursor findWithOptions(F filter, O options);
+    QueryCursor<V> findWithOptions(F filter, O options);
 
 
     /**

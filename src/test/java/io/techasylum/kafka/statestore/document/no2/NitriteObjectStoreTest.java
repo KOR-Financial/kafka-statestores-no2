@@ -1,6 +1,6 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import io.techasylum.kafka.statestore.document.DocumentStore;
+import io.techasylum.kafka.statestore.document.ObjectDocumentStore;
 import io.techasylum.kafka.statestore.document.DocumentStores;
 import io.techasylum.kafka.statestore.document.QueryCursor;
 import io.techasylum.kafka.statestore.document.no2.movies.*;
@@ -24,9 +24,9 @@ import static org.dizitart.no2.objects.filters.ObjectFilters.and;
 import static org.dizitart.no2.objects.filters.ObjectFilters.gte;
 import static org.junit.jupiter.api.Assertions.*;
 
-class NitriteStoreTest {
+class NitriteObjectStoreTest {
     private TopologyTestDriver testDriver;
-    private DocumentStore<String, Movie, ObjectFilter, FindOptions> store;
+    private ObjectDocumentStore<String, Movie, ObjectFilter, FindOptions> store;
 
     private final Serde<Movie> movieSerde = new JsonSerde<>(Movie.class);
     private final Serde<MovieEvent> eventSerde = new JsonSerde<>(MovieEvent.class);
@@ -43,7 +43,7 @@ class NitriteStoreTest {
                 .addSource("sourceProcessor", Serdes.String().deserializer(), eventSerde.deserializer(), "movie-events")
                 .addProcessor("commandHandler", MovieEventHandler::new, "sourceProcessor")
                 .addStateStore(
-                        DocumentStores.nitriteStore("movies", Serdes.String(), movieSerde, Movie.class, "code"),
+                        DocumentStores.nitriteStore("movies", Serdes.String(), movieSerde, "code"),
                     "commandHandler")
                 .addSink("sinkProcessor", "movie-events", Serdes.String().serializer(), eventSerde.serializer(), "commandHandler");
 
@@ -55,7 +55,7 @@ class NitriteStoreTest {
         props.setProperty(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
         testDriver = new TopologyTestDriver(topology, props);
 
-        store = (DocumentStore<String, Movie, ObjectFilter, FindOptions>) testDriver.getStateStore("movies");
+        store = (ObjectDocumentStore<String, Movie, ObjectFilter, FindOptions>) testDriver.getStateStore("movies");
 
         outputTopic = testDriver.createOutputTopic("movie-events", Serdes.String().deserializer(), eventSerde.deserializer());
         inputTopic = testDriver.createInputTopic("movie-events", Serdes.String().serializer(), eventSerde.serializer());

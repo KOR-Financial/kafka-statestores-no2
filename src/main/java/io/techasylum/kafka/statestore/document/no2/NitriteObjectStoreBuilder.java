@@ -5,7 +5,7 @@ import org.apache.kafka.streams.state.StoreBuilder;
 
 import java.util.Map;
 
-public class NitriteStoreBuilder<K, V> implements StoreBuilder<NitriteStore<K, V>> {
+public class NitriteObjectStoreBuilder<K, V> implements StoreBuilder<NitriteObjectStore<K, V>> {
     private final String name;
     private final Serde<K> keySerde;
     private final Serde<V> valueSerde;
@@ -14,7 +14,7 @@ public class NitriteStoreBuilder<K, V> implements StoreBuilder<NitriteStore<K, V
 
     private Map<String, String> logConfig;
 
-    public NitriteStoreBuilder(String name, Serde<K> keySerde, Serde<V> valueSerde, Class<V> valueClass, String keyFieldName) {
+    public NitriteObjectStoreBuilder(String name, Serde<K> keySerde, Serde<V> valueSerde, Class<V> valueClass, String keyFieldName) {
         this.name = name;
         this.keySerde = keySerde;
         this.valueSerde = valueSerde;
@@ -23,29 +23,29 @@ public class NitriteStoreBuilder<K, V> implements StoreBuilder<NitriteStore<K, V
     }
 
     @Override
-    public StoreBuilder<NitriteStore<K, V>> withCachingEnabled() {
+    public StoreBuilder<NitriteObjectStore<K, V>> withCachingEnabled() {
         throw new UnsupportedOperationException("caching is not available for nitrite stores");
     }
 
     @Override
-    public StoreBuilder<NitriteStore<K, V>> withCachingDisabled() {
+    public StoreBuilder<NitriteObjectStore<K, V>> withCachingDisabled() {
         throw new UnsupportedOperationException("caching is not available for nitrite stores");
     }
 
     @Override
-    public StoreBuilder<NitriteStore<K, V>> withLoggingEnabled(Map<String, String> config) {
+    public StoreBuilder<NitriteObjectStore<K, V>> withLoggingEnabled(Map<String, String> config) {
         this.logConfig = config;
         return this;
     }
 
     @Override
-    public StoreBuilder<NitriteStore<K, V>> withLoggingDisabled() {
+    public StoreBuilder<NitriteObjectStore<K, V>> withLoggingDisabled() {
         throw new UnsupportedOperationException("logging cannot be turned off for nitrite stores");
     }
 
     @Override
-    public NitriteStore<K, V> build() {
-        return new NitriteStore<>(this.name, this.keySerde, this.valueSerde, this.valueClass, this.keyFieldName);
+    public NitriteObjectStore<K, V> build() {
+        return new NitriteObjectStore<>(this.name, this.keySerde, this.valueSerde, this.valueClass, this.keyFieldName);
     }
 
     @Override

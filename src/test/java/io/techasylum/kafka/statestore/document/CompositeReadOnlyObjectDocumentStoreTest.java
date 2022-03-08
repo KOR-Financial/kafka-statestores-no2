@@ -1,25 +1,23 @@
 package io.techasylum.kafka.statestore.document;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.techasylum.kafka.statestore.document.internals.InternalMockProcessorContext;
 import io.techasylum.kafka.statestore.document.internals.MockRecordCollector;
 import io.techasylum.kafka.statestore.document.internals.StateStoreProviderStub;
 import io.techasylum.kafka.statestore.document.internals.WrappingStoreProvider;
+import io.techasylum.kafka.statestore.document.no2.NitriteDocumentStore;
 import io.techasylum.kafka.statestore.document.no2.movies.Movie;
-import io.techasylum.kafka.statestore.document.no2.movies.SetMovieCommand;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StoreQueryParameters;
-import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.processor.StateStoreContext;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
-import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.StateSerdes;
 import org.apache.kafka.streams.state.internals.CompositeReadOnlyKeyValueStore;
-import org.assertj.core.api.Assertions;
+import org.dizitart.no2.Cursor;
+import org.dizitart.no2.Document;
 import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.objects.ObjectFilter;
 import org.dizitart.no2.objects.filters.ObjectFilters;
@@ -33,23 +31,23 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.HashMap;
 
-import static io.techasylum.kafka.statestore.document.internals.StreamsTestUtils.toList;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class CompositeReadOnlyDocumentStoreTest {
+public class CompositeReadOnlyObjectDocumentStoreTest {
 
     private final String storeName = "my-store";
     private StateStoreProviderStub stubProviderTwo;
-    private DocumentStore<String, Movie, ObjectFilter, FindOptions> stubOneUnderlying;
-    private DocumentStore<String, Movie, ObjectFilter, FindOptions> otherUnderlyingStore;
+    private NitriteDocumentStore<String> stubOneUnderlying;
+    private NitriteDocumentStore<String> otherUnderlyingStore;
     private CompositeReadOnlyDocumentStore<String, Movie, ObjectFilter, FindOptions> theStore;
     private final Serde<Movie> movieSerde = new JsonSerde<>(Movie.class);
+
+    ObjectMapper objectMapper = new ObjectMapper();
 
     private final Movie matrix1 = new Movie("MTRX1", "The Matrix", 1999, 8.7f);
     private final Movie matrix2 = new Movie("MTRX2", "The Matrix Reloaded", 2003, 7.2f);
@@ -73,8 +71,8 @@ public class CompositeReadOnlyDocumentStoreTest {
         );
     }
 
-    private DocumentStore<String, Movie, ObjectFilter, FindOptions> newStoreInstance() throws IOException {
-        final DocumentStore<String, Movie, ObjectFilter, FindOptions> store = DocumentStores.nitriteStore(storeName, Serdes.String(), movieSerde, Movie.class, "code").build();
+    private NitriteDocumentStore<String> newStoreInstance() throws IOException {
+        final NitriteDocumentStore<String> store = DocumentStores.nitriteStore(storeName, Serdes.String(), movieSerde, "code").build();
         File storeDir = getNewStoreDir();
 
         @SuppressWarnings("rawtypes") final InternalMockProcessorContext context =
@@ -111,30 +109,30 @@ public class CompositeReadOnlyDocumentStoreTest {
 
     @Test
     public void shouldReturnValueIfExists() {
-        stubOneUnderlying.put(speed.code(), speed);
+        stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
         assertEquals(speed, theStore.get(speed.code()));
     }
 
     @Test
     public void shouldNotGetValuesFromOtherStores() {
-        otherUnderlyingStore.put(matrix1.code(), matrix1);
+        otherUnderlyingStore.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
         assertNull(theStore.get(matrix1.code()));
     }
 
     @Test
     public void shouldFindValueWithFieldQuery() {
-        stubOneUnderlying.put(matrix2.code(), matrix2);
-        final QueryCursor<Movie> queryCursor = theStore.find(ObjectFilters.eq("title", matrix2.title()));
-        assertThat(queryCursor.firstOrDefault()).isEqualTo(matrix2);
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        final Cursor queryCursor = theStore.find(ObjectFilters.eq("title", matrix2.title()));
+        assertThat(objectMapper.convertValue(queryCursor.firstOrDefault(), Movie.class)).isEqualTo(matrix2);
     }
 
     @Test
     public void shouldFindValueForKeyWhenMultiStores() throws IOException {
-        final DocumentStore<String, Movie, ObjectFilter, FindOptions> cache = newStoreInstance();
+        final DocumentStore<String, ObjectFilter, FindOptions> cache = newStoreInstance();
         stubProviderTwo.addStore(storeName, cache);
 
-        cache.put(matrix1.code(), matrix1);
-        stubOneUnderlying.put(matrix2.code(), matrix2);
+        cache.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
 
         assertEquals(matrix1, theStore.get(matrix1.code()));
         assertEquals(matrix2, theStore.get(matrix2.code()));
@@ -142,76 +140,76 @@ public class CompositeReadOnlyDocumentStoreTest {
 
     @Test
     public void shouldFindMultipleValues() {
-        stubOneUnderlying.put(matrix1.code(), matrix1);
-        stubOneUnderlying.put(matrix2.code(), matrix2);
-        stubOneUnderlying.put(matrix3.code(), matrix3);
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        QueryCursor<Movie> movieQueryCursor = theStore.find(ObjectFilters.gt("year", 2000));
+        Cursor movieQueryCursor = theStore.find(ObjectFilters.gt("year", 2000));
         assertThat(movieQueryCursor.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor.size()).isEqualTo(2);
-        assertThat(movieQueryCursor.firstOrDefault()).isEqualTo(matrix2);
+        assertThat(objectMapper.convertValue(movieQueryCursor.firstOrDefault(), Movie.class)).isEqualTo(matrix2);
         assertThat(movieQueryCursor.toList()).hasSize(2);
-        assertThat(movieQueryCursor.toList()).containsExactly(matrix2, matrix3);
+        assertThat(movieQueryCursor.toList()).containsExactly(new Document(objectMapper.convertValue(matrix2, HashMap.class)), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
     }
 
     @Test
     public void shouldSupportPagination() {
-        stubOneUnderlying.put(matrix1.code(), matrix1);
-        stubOneUnderlying.put(matrix2.code(), matrix2);
-        stubOneUnderlying.put(matrix3.code(), matrix3);
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        QueryCursor<Movie> movieQueryCursor1 = theStore.findWithOptions(FindOptions.limit(0,2));
+        Cursor movieQueryCursor1 = theStore.findWithOptions(FindOptions.limit(0,2));
         assertThat(movieQueryCursor1.totalCount()).isEqualTo(3);
         assertThat(movieQueryCursor1.size()).isEqualTo(2);
-        assertThat(movieQueryCursor1.firstOrDefault()).isEqualTo(matrix1);
+        assertThat(objectMapper.convertValue(movieQueryCursor1.firstOrDefault(), Movie.class)).isEqualTo(matrix1);
         assertThat(movieQueryCursor1.toList()).hasSize(2);
-        assertThat(movieQueryCursor1.toList()).containsExactly(matrix1, matrix2);
+        assertThat(movieQueryCursor1.toList()).containsExactly(new Document(objectMapper.convertValue(matrix1, HashMap.class)), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
         assertThat(movieQueryCursor1.hasMore()).isTrue();
-        QueryCursor<Movie> movieQueryCursor2 = theStore.findWithOptions(FindOptions.limit(2,2));
+        Cursor movieQueryCursor2 = theStore.findWithOptions(FindOptions.limit(2,2));
         assertThat(movieQueryCursor2.totalCount()).isEqualTo(3);
         assertThat(movieQueryCursor2.size()).isEqualTo(1);
-        assertThat(movieQueryCursor2.firstOrDefault()).isEqualTo(matrix3);
+        assertThat(objectMapper.convertValue(movieQueryCursor2.firstOrDefault(), Movie.class)).isEqualTo(matrix3);
         assertThat(movieQueryCursor2.toList()).hasSize(1);
-        assertThat(movieQueryCursor2.toList()).containsExactly(matrix3);
+        assertThat(movieQueryCursor2.toList()).containsExactly(new Document(objectMapper.convertValue(matrix3, HashMap.class)));
         assertThat(movieQueryCursor2.hasMore()).isFalse();
     }
 
     @Test
     public void shouldSupportPaginationWhileFiltering() {
-        stubOneUnderlying.put(matrix1.code(), matrix1);
-        stubOneUnderlying.put(matrix2.code(), matrix2);
-        stubOneUnderlying.put(matrix3.code(), matrix3);
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        QueryCursor<Movie> movieQueryCursor1 = theStore.findWithOptions(ObjectFilters.gt("year", 2000), FindOptions.limit(0,1));
+        Cursor movieQueryCursor1 = theStore.findWithOptions(ObjectFilters.gt("year", 2000), FindOptions.limit(0,1));
         assertThat(movieQueryCursor1.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor1.size()).isEqualTo(1);
-        assertThat(movieQueryCursor1.firstOrDefault()).isEqualTo(matrix2);
+        assertThat(objectMapper.convertValue(movieQueryCursor1.firstOrDefault(), Movie.class)).isEqualTo(matrix2);
         assertThat(movieQueryCursor1.toList()).hasSize(1);
-        assertThat(movieQueryCursor1.toList()).containsExactly(matrix2);
+        assertThat(movieQueryCursor1.toList()).containsExactly(new Document(objectMapper.convertValue(matrix2, HashMap.class)));
         assertThat(movieQueryCursor1.hasMore()).isTrue();
-        QueryCursor<Movie> movieQueryCursor2 = theStore.findWithOptions(ObjectFilters.gt("year", 2000), FindOptions.limit(1,1));
+        Cursor movieQueryCursor2 = theStore.findWithOptions(ObjectFilters.gt("year", 2000), FindOptions.limit(1,1));
         assertThat(movieQueryCursor2.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor2.size()).isEqualTo(1);
-        assertThat(movieQueryCursor2.firstOrDefault()).isEqualTo(matrix3);
+        assertThat(objectMapper.convertValue(movieQueryCursor2.firstOrDefault(), Movie.class)).isEqualTo(matrix3);
         assertThat(movieQueryCursor2.toList()).hasSize(1);
-        assertThat(movieQueryCursor2.toList()).containsExactly(matrix3);
+        assertThat(movieQueryCursor2.toList()).containsExactly(new Document(objectMapper.convertValue(matrix3, HashMap.class)));
         assertThat(movieQueryCursor2.hasMore()).isFalse();
     }
 
 
     @Test
     public void shouldSupportFindAcrossMultipleStores() throws IOException {
-        final DocumentStore<String, Movie, ObjectFilter, FindOptions> cache = newStoreInstance();
+        final DocumentStore<String, ObjectFilter, FindOptions> cache = newStoreInstance();
         stubProviderTwo.addStore(storeName, cache);
 
-        stubOneUnderlying.put(matrix1.code(), matrix1);
-        stubOneUnderlying.put(matrix2.code(), matrix2);
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
 
-        cache.put(matrix3.code(), matrix3);
-        cache.put(speed.code(), speed);
+        cache.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
+        cache.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
 
-        QueryCursor<Movie> movieQueryCursor = theStore.find(ObjectFilters.gt("year", 2000));
-        assertThat(movieQueryCursor.toList()).containsExactly(matrix2, matrix3);
+        Cursor movieQueryCursor = theStore.find(ObjectFilters.gt("year", 2000));
+        assertThat(movieQueryCursor.toList()).containsExactly(new Document(objectMapper.convertValue(matrix2, HashMap.class)), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
     }
 
     /**

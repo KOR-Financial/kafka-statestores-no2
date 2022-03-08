@@ -1,6 +1,6 @@
 package io.techasylum.kafka.statestore.document.no2.movies;
 
-import io.techasylum.kafka.statestore.document.DocumentStore;
+import io.techasylum.kafka.statestore.document.ObjectDocumentStore;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
@@ -16,7 +16,7 @@ public class MovieEventHandler implements Processor<String, MovieEvent, String, 
     private final Logger LOGGER = LoggerFactory.getLogger(MovieEventHandler.class);
 
     private ProcessorContext<String, MovieCommandFeedback> context;
-    private DocumentStore<String, Movie, ObjectFilter, FindOptions> store;
+    private ObjectDocumentStore<String, Movie, ObjectFilter, FindOptions> store;
 
     @Override
     public void init(ProcessorContext<String, MovieCommandFeedback> context) {

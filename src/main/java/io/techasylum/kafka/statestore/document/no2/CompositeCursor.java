@@ -1,79 +1,101 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import io.techasylum.kafka.statestore.document.QueryCursor;
 import org.dizitart.no2.*;
-import org.dizitart.no2.Document;
 import org.dizitart.no2.exceptions.InvalidOperationException;
 import org.dizitart.no2.internals.DocumentCursorInternals;
-import org.dizitart.no2.objects.ObjectCursorInternals;
 import org.dizitart.no2.store.NitriteMap;
 import org.jetbrains.annotations.NotNull;
 
 import java.text.Collator;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.counting;
 import static org.dizitart.no2.exceptions.ErrorMessage.UNABLE_TO_SORT_ON_ARRAY;
+import static org.dizitart.no2.internals.DocumentCursorInternals.emptyCursor;
 import static org.dizitart.no2.util.DocumentUtils.getFieldValue;
+import static org.dizitart.no2.util.StringUtils.isNullOrEmpty;
+import static org.dizitart.no2.util.ValidationUtils.validateLimit;
 
-public class CompositeCursor<V> implements QueryCursor<V> {
+public class CompositeCursor implements Cursor {
 
-    private final Map<Integer, NitriteQueryCursorWrapper<V>> cursors;
-    private final Map<Integer, DocumentCursorInternals> cursorsWithInternals = new HashMap<>();
-    private final NitriteQueryCursorWrapper<V> compositeCursor;
-    private final Set<NitriteId> compositeResultSet = new HashSet<>();
-    private NitriteMap<NitriteId, Document> compositeUnderlyingMap = null;
+    private final Cursor compositeCursor;
+    private Map<Integer, Integer> nextOffsets;
+    private NitriteMap<NitriteId, Document> compositeUnderlyingMap;
 
-    private final FindOptions findOptions;
-
-    private List<Integer> offsetsPerPartition;
-
-    private List<List<V>> compositeList;
-    private boolean compositeHasMore;
-    private int compositeSize;
-    private int compositeTotalCount;
-
-    public CompositeCursor(Map<Integer, NitriteQueryCursorWrapper<V>> cursors, FindOptions findOptions) {
-        this.cursors = cursors;
-        this.findOptions = findOptions;
-//        calculateComposite();
-        for (Map.Entry<Integer, NitriteQueryCursorWrapper<V>> cursorEntry : cursors.entrySet()) {
-            ObjectCursorInternals objectCursorInternals = new ObjectCursorInternals(cursorEntry.getValue());
-            DocumentCursorInternals documentCursorInternals = new DocumentCursorInternals(objectCursorInternals.getInternalCursor());
-            compositeResultSet.addAll(documentCursorInternals.getResultSet());
+    public CompositeCursor(Map<Integer, Cursor> cursorsByPartition, CompositeFindOptions compositeFindOptions) {
+        Set<NitriteId> nitriteIdSet = new HashSet<>();
+        for (Map.Entry<Integer, Cursor> cursorEntry : cursorsByPartition.entrySet()) {
+            DocumentCursorInternals documentCursorInternals = new DocumentCursorInternals(cursorEntry.getValue());
             if (compositeUnderlyingMap == null) {
                 compositeUnderlyingMap = documentCursorInternals.getUnderlyingMap();
-            } else {
-                for (Map.Entry<NitriteId, Document> entry : documentCursorInternals.getUnderlyingMap().entrySet()) {
-                    compositeUnderlyingMap.putIfAbsent(entry.getKey(), entry.getValue());
-                }
             }
-            cursorsWithInternals.put(cursorEntry.getKey(), documentCursorInternals);
+            for (Map.Entry<NitriteId, Document> entry : documentCursorInternals.getUnderlyingMap().entrySet()) {
+                NitriteId newId = NitriteId.newId();
+                cursorEntry.getValue().forEach((doc) -> {
+                    doc.put("_id", newId);
+                    doc.put("_pid", cursorEntry.getKey());
+                });
+                compositeUnderlyingMap.put(newId, entry.getValue());
+                nitriteIdSet.add(newId);
+            }
         }
-        compositeCursor = new NitriteQueryCursorWrapper<V>(
-                ObjectCursorInternals.createCursor(DocumentCursorInternals.createCursor(compositeResultSet, compositeUnderlyingMap)));
+        if (!nitriteIdSet.isEmpty()) {
+//            validateLimit(compositeFindOptions.getFindOptionsForPartition(), nitriteIdSet.size());
+            Set<NitriteId> resultSet;
+
+            if (isNullOrEmpty(compositeFindOptions.getField())) {
+                resultSet = limitIdSet(nitriteIdSet, compositeFindOptions);
+            } else {
+                resultSet = sortIdSet(nitriteIdSet, compositeFindOptions);
+            }
+
+            int sizeOfAllPartitions = cursorsByPartition.values().stream().mapToInt(Cursor::totalCount).sum();
+            compositeCursor = DocumentCursorInternals.createCursor(resultSet, compositeUnderlyingMap, compositeFindOptions, sizeOfAllPartitions);
+
+            nextOffsets = calculateNextOffsets(resultSet, compositeUnderlyingMap, compositeFindOptions);
+        } else {
+            compositeCursor = emptyCursor();
+        }
     }
 
-//    private void calculateComposite() {
-//        compositeList = cursors.values().stream().map(QueryCursor::toList).sorted(sort()).toList();
-//        compositeHasMore = cursors.values().stream().map(QueryCursor::hasMore).reduce(Boolean::logicalOr).orElse(false);
-//        compositeSize = cursors.values().stream().mapToInt(QueryCursor::size).sum();
-//        compositeTotalCount = cursors.values().stream().mapToInt(QueryCursor::totalCount).sum();
-//    }
+    private Map<Integer, Integer> calculateNextOffsets(Set<NitriteId> resultSet, NitriteMap<NitriteId, Document> compositeUnderlyingMap, CompositeFindOptions compositeFindOptions) {
+        Map<Integer, Long> offsetDeltas = resultSet.stream().map((id) -> (Integer) compositeUnderlyingMap.get(id).get("_pid")).collect(Collectors.groupingBy(identity(), counting()));
+        Map<Integer, Integer> offsetsByPartition = compositeFindOptions.getOffsetsByPartition();
+        offsetsByPartition.replaceAll((k, v) -> offsetsByPartition.get(k) + offsetDeltas.get(k).intValue());
+        return offsetsByPartition;
+    }
+
+    @Override
+    public RecordIterable<Document> project(Document projection) {
+        return null;
+    }
+
+    @Override
+    public RecordIterable<Document> join(Cursor foreignCursor, Lookup lookup) {
+        return null;
+    }
+
+    @Override
+    public Set<NitriteId> idSet() {
+        return null;
+    }
 
     @NotNull
     @Override
-    public Iterator<V> iterator() {
+    public Iterator<Document> iterator() {
         return this.compositeCursor.iterator();
     }
 
     @Override
-    public void forEach(Consumer<? super V> action) {
+    public void forEach(Consumer action) {
         this.compositeCursor.forEach(action);
     }
 
     @Override
-    public Spliterator<V> spliterator() {
+    public Spliterator<Document> spliterator() {
         return this.compositeCursor.spliterator();
     }
 
@@ -93,16 +115,16 @@ public class CompositeCursor<V> implements QueryCursor<V> {
     }
 
     @Override
-    public V firstOrDefault() {
+    public Document firstOrDefault() {
         return this.compositeCursor.firstOrDefault();
     }
 
     @Override
-    public List<V> toList() {
+    public List<Document> toList() {
         return this.compositeCursor.toList();
     }
 
-    private Set<NitriteId> sortIdSet(Collection<NitriteId> nitriteIdSet, FindOptions findOptions) {
+    private Set<NitriteId> sortIdSet(Collection<NitriteId> nitriteIdSet, CompositeFindOptions findOptions) {
         String sortField = findOptions.getField();
         Collator collator = findOptions.getCollator();
 
@@ -163,9 +185,10 @@ public class CompositeCursor<V> implements QueryCursor<V> {
         return limitIdSet(sortedValues, findOptions);
     }
 
-    private Set<NitriteId> limitIdSet(Collection<NitriteId> nitriteIdSet, FindOptions findOptions) {
-        int offset = findOptions.getOffset();
-        int size = findOptions.getSize();
+    private Set<NitriteId> limitIdSet(Collection<NitriteId> nitriteIdSet, CompositeFindOptions compositeFindOptions) {
+        int offset = 0;
+//        int offset = compositeFindOptions.getOffset();
+        int size = compositeFindOptions.getSize();
         Set<NitriteId> resultSet = new LinkedHashSet<>();
 
         int index = 0;
@@ -186,5 +209,9 @@ public class CompositeCursor<V> implements QueryCursor<V> {
             finalList.addAll(list);
         }
         return finalList;
+    }
+
+    public Map<Integer, Integer> getNextOffsets() {
+        return nextOffsets;
     }
 }

@@ -18,7 +18,18 @@ import java.util.Set;
 public class QueryableDocumentStoreTypes {
 
     /**
-     * A {@link QueryableStoreType} that accepts {@link ReadOnlyDocumentStore}.
+     * A {@link QueryableStoreType} that accepts {@link ReadOnlyObjectDocumentStore}.
+     *
+     * @param <K> key type of the store
+     * @param <V> value type of the store
+     * @return {@link QueryableDocumentStoreTypes.DocumentStoreType}
+     */
+    public static <K, V, F, O> QueryableStoreType<ReadOnlyObjectDocumentStore<K, V, F, O>> documentObjectStore() {
+        return new QueryableDocumentStoreTypes.DocumentObjectStoreType<>();
+    }
+
+    /**
+     * A {@link QueryableStoreType} that accepts {@link ReadOnlyObjectDocumentStore}.
      *
      * @param <K> key type of the store
      * @param <V> value type of the store
@@ -56,8 +67,22 @@ public class QueryableDocumentStoreTypes {
 
         @Override
         public ReadOnlyDocumentStore<K, V, F, O> create(final StateStoreProvider storeProvider,
-                                                  final String storeName) {
+                                                              final String storeName) {
             return new CompositeReadOnlyDocumentStore<>(storeProvider, this, storeName);
+        }
+
+    }
+
+    public static class DocumentObjectStoreType<K, V, F, O> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyObjectDocumentStore<K, V, F, O>> {
+
+        DocumentObjectStoreType() {
+            super(Collections.singleton(ReadOnlyObjectDocumentStore.class));
+        }
+
+        @Override
+        public ReadOnlyObjectDocumentStore<K, V, F, O> create(final StateStoreProvider storeProvider,
+                                                              final String storeName) {
+            return new CompositeReadOnlyObjectDocumentStore<>(storeProvider, this, storeName);
         }
 
     }

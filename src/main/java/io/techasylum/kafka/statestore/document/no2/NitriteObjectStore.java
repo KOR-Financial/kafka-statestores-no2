@@ -1,6 +1,6 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import io.techasylum.kafka.statestore.document.DocumentStore;
+import io.techasylum.kafka.statestore.document.ObjectDocumentStore;
 import io.techasylum.kafka.statestore.document.QueryCursor;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.kafka.common.serialization.Serde;
@@ -38,7 +38,7 @@ import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.p
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareValueSerde;
 import static org.apache.kafka.streams.processor.internals.ProcessorContextUtils.asInternalProcessorContext;
 
-public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, FindOptions> {
+public class NitriteObjectStore<K, V> implements ObjectDocumentStore<K, V, ObjectFilter, FindOptions> {
     final String name;
     final Serde<K> keySerde;
     final Serde<V> valueSerde;
@@ -52,7 +52,7 @@ public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, Fin
 
     InternalProcessorContext context;
 
-    public NitriteStore(String name, Serde<K> keySerde, Serde<V> valueSerde, Class<V> valueClass, String keyFieldName) {
+    public NitriteObjectStore(String name, Serde<K> keySerde, Serde<V> valueSerde, Class<V> valueClass, String keyFieldName) {
         this.name = name;
         this.keySerde = keySerde;
         this.valueSerde = valueSerde;
@@ -92,7 +92,7 @@ public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, Fin
         initStoreSerde(context);
         openDB(context.appConfigs(), context.stateDir());
 
-        context.register(root, new NitriteStore<K, V>.NitriteRestoreCallback(this));
+        context.register(root, new NitriteObjectStore<K, V>.NitriteRestoreCallback(this));
     }
 
     private void initStoreSerde(final StateStoreContext context) {
@@ -179,7 +179,7 @@ public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, Fin
 
         Cursor<V> c = this.repo.find(filter);
 
-        return new NitriteQueryCursorWrapper<>(c);
+        return /*new NitriteQueryCursorWrapper<>(c)*/null;
     }
 
     @Override
@@ -189,7 +189,7 @@ public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, Fin
 
         Cursor<V> c = this.repo.find(findOptions);
 
-        return new NitriteQueryCursorWrapper<>(c);
+        return /*new NitriteQueryCursorWrapper<>(c)*/null;
     }
 
     @Override
@@ -200,7 +200,7 @@ public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, Fin
 
         Cursor<V> c = this.repo.find(filter, findOptions);
 
-        return new NitriteQueryCursorWrapper<>(c);
+        return /*new NitriteQueryCursorWrapper<>(c)*/null;
     }
 
     @Override
@@ -292,16 +292,16 @@ public class NitriteStore<K, V> implements DocumentStore<K, V, ObjectFilter, Fin
 // == Replay ==========================================================================================================
 
     public class NitriteRestoreCallback implements StateRestoreCallback {
-        private final NitriteStore<K, V> store;
+        private final NitriteObjectStore<K, V> store;
 
-        public NitriteRestoreCallback(NitriteStore<K, V> store) {
+        public NitriteRestoreCallback(NitriteObjectStore<K, V> store) {
             this.store = store;
         }
 
         @Override
         public void restore(byte[] key, byte[] value) {
-            K k = NitriteStore.this.serdes.keyFrom(key);
-            V v = NitriteStore.this.serdes.valueFrom(value);
+            K k = NitriteObjectStore.this.serdes.keyFrom(key);
+            V v = NitriteObjectStore.this.serdes.valueFrom(value);
 
             this.store.store(k, v);
         }
