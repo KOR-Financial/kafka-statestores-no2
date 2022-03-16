@@ -1,7 +1,7 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import io.techasylum.kafka.statestore.document.ObjectDocumentStore;
-import io.techasylum.kafka.statestore.document.QueryCursor;
+import io.techasylum.kafka.statestore.document.object.ObjectDocumentStore;
+import io.techasylum.kafka.statestore.document.object.QueryCursor;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.utils.Bytes;

@@ -1,4 +1,4 @@
-package io.techasylum.kafka.statestore.document;
+package io.techasylum.kafka.statestore.document.object;
 
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.StateStore;

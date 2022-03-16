@@ -1,13 +1,10 @@
 package io.techasylum.kafka.statestore.document.no2;
 
 import org.dizitart.no2.NitriteBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public interface NitriteConfigSetter {
-    Logger LOG = LoggerFactory.getLogger(NitriteConfigSetter.class);
 
     /**
      * Set the nitrite options for the provided storeName.

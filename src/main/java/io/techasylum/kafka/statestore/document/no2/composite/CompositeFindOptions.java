@@ -1,4 +1,4 @@
-package io.techasylum.kafka.statestore.document.no2;
+package io.techasylum.kafka.statestore.document.no2.composite;
 
 import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.NullOrder;
@@ -7,45 +7,9 @@ import org.dizitart.no2.SortOrder;
 import java.text.Collator;
 import java.util.Map;
 
-public class CompositeFindOptions {
+public class CompositeFindOptions extends FindOptions {
 
     private Map<Integer, Integer> offsetsByPartition;
-
-    /**
-     * Gets the number of records in each page for pagination in
-     * find operation results.
-     *
-     * @return the record size per page.
-     */
-    private int size;
-
-    /**
-     * Gets the target value name for sorting the find results.
-     *
-     * @return the target value name.
-     */
-    private String field;
-
-    /**
-     * Gets the sort order of the find result.
-     *
-     * @return the sort order.
-     */
-    private SortOrder sortOrder = SortOrder.Ascending;
-
-    /**
-     * Gets the `null` values order of the find result.
-     *
-     * @return the `null` values order.
-     */
-    private NullOrder nullOrder = NullOrder.Default;
-
-    /**
-     * Gets the collator instance for sorting of {@link String}.
-     *
-     * @return the collator.
-     */
-    private Collator collator;
 
     /**
      * Instantiates a new find options with pagination criteria.
@@ -54,8 +18,8 @@ public class CompositeFindOptions {
      * @param size   the number of records per page.
      */
     public CompositeFindOptions(Map<Integer, Integer> offsetsByPartition, int size) {
+        super(0, size);
         this.offsetsByPartition = offsetsByPartition;
-        this.size = size;
     }
 
     /**
@@ -65,8 +29,7 @@ public class CompositeFindOptions {
      * @param sortOrder the sort order.
      */
     public CompositeFindOptions(String field, SortOrder sortOrder) {
-        this.field = field;
-        this.sortOrder = sortOrder;
+        super(field, sortOrder);
     }
 
     /**
@@ -77,9 +40,7 @@ public class CompositeFindOptions {
      * @param collator  the collator.
      */
     public CompositeFindOptions(String field, SortOrder sortOrder, Collator collator) {
-        this.field = field;
-        this.sortOrder = sortOrder;
-        this.collator = collator;
+        super(field, sortOrder, collator);
     }
 
     /**
@@ -90,9 +51,7 @@ public class CompositeFindOptions {
      * @param nullOrder the `null` value order.
      */
     public CompositeFindOptions(String field, SortOrder sortOrder, NullOrder nullOrder) {
-        this.field = field;
-        this.sortOrder = sortOrder;
-        this.nullOrder = nullOrder;
+        super(field, sortOrder, nullOrder);
     }
 
     /**
@@ -104,10 +63,7 @@ public class CompositeFindOptions {
      * @param collator  the collator.
      */
     public CompositeFindOptions(String field, SortOrder sortOrder, Collator collator, NullOrder nullOrder) {
-        this.field = field;
-        this.sortOrder = sortOrder;
-        this.nullOrder = nullOrder;
-        this.collator = collator;
+        super(field, sortOrder, collator, nullOrder);
     }
 
     /**
@@ -169,35 +125,57 @@ public class CompositeFindOptions {
         return new CompositeFindOptions(field, sortOrder, collator, nullOrder);
     }
 
-    public FindOptions getFindOptionsForPartition(int partition) {
-        return new FindOptions(field, sortOrder, collator, nullOrder).thenLimit(offsetsByPartition.get(partition), size);
+    /**
+     * Sets the pagination criteria of a @{@link CompositeFindOptions} with sorting updateOptions.
+     *
+     * NOTE: With this {@link CompositeFindOptions} it will first sort all search results,
+     * then it will apply pagination criteria on the sorted results.
+     *
+     * @param offsetsByPartition the pagination offset.
+     * @param size   the number of records per page.
+     * @return the find updateOptions with pagination and sorting criteria.
+     */
+    public CompositeFindOptions thenLimit(Map<Integer, Integer> offsetsByPartition, int size) {
+        super.thenLimit(0, size);
+        this.offsetsByPartition = offsetsByPartition;
+        return this;
+    }
+
+    /**
+     * Sets the pagination criteria of a @{@link CompositeFindOptions} with sorting updateOptions.
+     *
+     * NOTE: With this {@link CompositeFindOptions} it will first sort all search results,
+     * then it will apply pagination criteria on the sorted results.
+     *
+     * @param size   the number of records per page.
+     * @return the find updateOptions with pagination and sorting criteria.
+     */
+    public CompositeFindOptions thenLimit(int size) {
+        super.thenLimit(0, size);
+        return this;
+    }
+
+    public CompositeFindOptions getFindOptionsForPartition(int partition) {
+        return (CompositeFindOptions) thenLimit(getOffsetForPartition(partition), getSize());
     }
 
     public Integer getOffsetForPartition(int partition) {
-        return offsetsByPartition.get(partition);
+        if (offsetsByPartition != null) {
+            return offsetsByPartition.get(partition);
+        } else {
+            return getOffset();
+        }
     }
 
     public Map<Integer, Integer> getOffsetsByPartition() {
         return offsetsByPartition;
     }
 
-    public int getSize() {
-        return size;
-    }
-
-    public String getField() {
-        return field;
-    }
-
-    public SortOrder getSortOrder() {
-        return sortOrder;
-    }
-
-    public NullOrder getNullOrder() {
-        return nullOrder;
-    }
-
-    public Collator getCollator() {
-        return collator;
+    @Override
+    public String toString() {
+        return "CompositeFindOptions{" +
+                "super=" + super.toString() +
+                "offsetsByPartition=" + offsetsByPartition +
+                '}';
     }
 }

@@ -1,9 +1,13 @@
 package io.techasylum.kafka.statestore.document.no2.movies;
 
-import io.techasylum.kafka.statestore.document.ObjectDocumentStore;
+import io.techasylum.kafka.statestore.document.DocumentStore;
+import io.techasylum.kafka.statestore.document.no2.composite.CompositeFindOptions;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
+import org.dizitart.no2.Cursor;
+import org.dizitart.no2.Document;
+import org.dizitart.no2.Filter;
 import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.objects.ObjectFilter;
 import org.slf4j.Logger;
@@ -16,7 +20,8 @@ public class MovieEventHandler implements Processor<String, MovieEvent, String, 
     private final Logger LOGGER = LoggerFactory.getLogger(MovieEventHandler.class);
 
     private ProcessorContext<String, MovieCommandFeedback> context;
-    private ObjectDocumentStore<String, Movie, ObjectFilter, FindOptions> store;
+    private DocumentStore<String, Document, Cursor, Filter, FindOptions> store;
+    private final MovieConverter movieConverter = new MovieConverter();
 
     @Override
     public void init(ProcessorContext<String, MovieCommandFeedback> context) {
@@ -31,8 +36,7 @@ public class MovieEventHandler implements Processor<String, MovieEvent, String, 
 
         if (record.value() instanceof SetMovieCommand setCmd) {
 
-
-            Movie fnd = this.store.get(record.key());
+            Movie fnd = movieConverter.fromDocument(this.store.get(record.key()));
             if (fnd == null) {
                 fnd = new Movie(
                         record.key(),
@@ -48,12 +52,12 @@ public class MovieEventHandler implements Processor<String, MovieEvent, String, 
                 );
             }
 
-            this.store.put(record.key(), fnd);
+            this.store.put(record.key(), movieConverter.toDocument(fnd));
 
             result = new MovieCommandFeedback(record.value(), null);
 
         } else if (record.value() instanceof DeleteMovieCommand delCmd) {
-            Movie fnd = this.store.delete(record.key());
+            Movie fnd = movieConverter.fromDocument(this.store.delete(record.key()));
             if (fnd == null) {
                 result = new MovieCommandFeedback(record.value(), "no such movie");
             } else {

@@ -1,15 +1,16 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import io.techasylum.kafka.statestore.document.ObjectDocumentStore;
+import io.techasylum.kafka.statestore.document.DocumentStore;
 import io.techasylum.kafka.statestore.document.DocumentStores;
-import io.techasylum.kafka.statestore.document.QueryCursor;
 import io.techasylum.kafka.statestore.document.no2.movies.*;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
+import org.dizitart.no2.Cursor;
+import org.dizitart.no2.Document;
+import org.dizitart.no2.Filter;
 import org.dizitart.no2.FindOptions;
-import org.dizitart.no2.objects.ObjectFilter;
-import org.dizitart.no2.objects.filters.ObjectFilters;
+import org.dizitart.no2.filters.Filters;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,16 +21,18 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Properties;
 
-import static org.dizitart.no2.objects.filters.ObjectFilters.and;
-import static org.dizitart.no2.objects.filters.ObjectFilters.gte;
+import static org.dizitart.no2.filters.Filters.and;
+import static org.dizitart.no2.filters.Filters.gte;
 import static org.junit.jupiter.api.Assertions.*;
 
 class NitriteObjectStoreTest {
     private TopologyTestDriver testDriver;
-    private ObjectDocumentStore<String, Movie, ObjectFilter, FindOptions> store;
+    private DocumentStore<String, Document, Cursor, Filter, FindOptions> store;
 
+    private final Serde<Document> documentSerde = new JsonSerde<>(Document.class);
     private final Serde<Movie> movieSerde = new JsonSerde<>(Movie.class);
     private final Serde<MovieEvent> eventSerde = new JsonSerde<>(MovieEvent.class);
+    private final MovieConverter movieConverter = new MovieConverter();
 
     private TestOutputTopic<String, MovieEvent> outputTopic;
     private TestInputTopic<String, MovieEvent> inputTopic;
@@ -43,7 +46,7 @@ class NitriteObjectStoreTest {
                 .addSource("sourceProcessor", Serdes.String().deserializer(), eventSerde.deserializer(), "movie-events")
                 .addProcessor("commandHandler", MovieEventHandler::new, "sourceProcessor")
                 .addStateStore(
-                        DocumentStores.nitriteStore("movies", Serdes.String(), movieSerde, "code"),
+                        DocumentStores.nitriteStore("movies", Serdes.String(), documentSerde, "code"),
                     "commandHandler")
                 .addSink("sinkProcessor", "movie-events", Serdes.String().serializer(), eventSerde.serializer(), "commandHandler");
 
@@ -55,7 +58,7 @@ class NitriteObjectStoreTest {
         props.setProperty(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
         testDriver = new TopologyTestDriver(topology, props);
 
-        store = (ObjectDocumentStore<String, Movie, ObjectFilter, FindOptions>) testDriver.getStateStore("movies");
+        store = (DocumentStore<String, Document, Cursor, Filter, FindOptions>) testDriver.getStateStore("movies");
 
         outputTopic = testDriver.createOutputTopic("movie-events", Serdes.String().deserializer(), eventSerde.deserializer());
         inputTopic = testDriver.createInputTopic("movie-events", Serdes.String().serializer(), eventSerde.serializer());
@@ -80,14 +83,14 @@ class NitriteObjectStoreTest {
         assertEquals(new KeyValue<>(key, new Movie(key, "The Matrix", 1999, 8.7f)), stateTopic.readKeyValue());
         assertTrue(stateTopic.isEmpty());
 
-        assertEquals(new Movie("the_matrix", "The Matrix", 1999, 8.7f), store.get("the_matrix"));
+        assertEquals(new Movie("the_matrix", "The Matrix", 1999, 8.7f), movieConverter.fromDocument(store.get("the_matrix")));
     }
 
     @Test
     public void shouldRemoveMovie() {
         loadMovies();
 
-        assertEquals(new Movie("the_matrix", "The Matrix", 1999, 8.7f), store.get("the_matrix"));
+        assertEquals(new Movie("the_matrix", "The Matrix", 1999, 8.7f), movieConverter.fromDocument(store.get("the_matrix")));
 
         inputTopic.pipeInput("the_matrix", new DeleteMovieCommand());
 
@@ -98,7 +101,7 @@ class NitriteObjectStoreTest {
     public void shouldFindMovieWithRegexFilter() {
         loadMovies();
 
-        QueryCursor<Movie> movies = store.find(and(ObjectFilters.regex("title", ".*Matrix.*")));
+        Cursor movies = store.find(and(Filters.regex("title", ".*Matrix.*")));
         assertEquals(4, movies.totalCount());
     }
 
@@ -106,7 +109,7 @@ class NitriteObjectStoreTest {
     public void shouldFindMovieWithMultipleFilter() {
         loadMovies();
 
-        QueryCursor<Movie> movies = store.find(and(ObjectFilters.regex("title", ".*Matrix.*"), gte("year", 2003)));
+        Cursor movies = store.find(and(Filters.regex("title", ".*Matrix.*"), gte("year", 2003)));
         assertEquals(3, movies.totalCount());
     }
 

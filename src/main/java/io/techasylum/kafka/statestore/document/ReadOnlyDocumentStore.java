@@ -1,9 +1,8 @@
 package io.techasylum.kafka.statestore.document;
 
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
-import org.dizitart.no2.Cursor;
 
-public interface ReadOnlyDocumentStore<K, V, F, O> {
+public interface ReadOnlyDocumentStore<Key, Doc, Curs, Filter, Options> {
 
     /**
      * Applies a filter on the store and returns a cursor to the
@@ -16,7 +15,7 @@ public interface ReadOnlyDocumentStore<K, V, F, O> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `filter` is null.
      */
-    Cursor find(F filter);
+    Curs find(Filter filter);
 
     /**
      * Returns a customized cursor to all objects in the store.
@@ -25,7 +24,7 @@ public interface ReadOnlyDocumentStore<K, V, F, O> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `findOptions` is null.
      */
-    Cursor findWithOptions(O options);
+    Curs findWithOptions(Options options);
 
     /**
      * Applies a filter on the store and returns a customized cursor to the
@@ -37,10 +36,9 @@ public interface ReadOnlyDocumentStore<K, V, F, O> {
      * @param filter      the filter to apply to select objects from collection.
      * @param options specifies pagination, sort options for the cursor.
      * @return a cursor to all selected objects.
-     * @throws NullPointerException if `filter` is null.
      * @throws NullPointerException if `findOptions` is null.
      */
-    Cursor findWithOptions(F filter, O options);
+    Curs findWithOptions(Filter filter, Options options);
 
 
     /**
@@ -51,6 +49,8 @@ public interface ReadOnlyDocumentStore<K, V, F, O> {
      * @throws NullPointerException if `key` is null.
      * @throws InvalidStateStoreException if the store is not initialized
      */
-    V get(K key);
+    Doc get(Key key);
+
+    int getPartition();
 
 }

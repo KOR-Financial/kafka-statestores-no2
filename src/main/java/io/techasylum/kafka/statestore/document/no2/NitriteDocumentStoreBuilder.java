@@ -7,6 +7,7 @@ import org.dizitart.no2.Document;
 import java.util.Map;
 
 public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocumentStore<K>> {
+
     private final String name;
     private final Serde<K> keySerde;
     private final Serde<Document> valueSerde;
@@ -28,7 +29,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     @Override
     public StoreBuilder<NitriteDocumentStore<K>> withCachingDisabled() {
-        throw new UnsupportedOperationException("caching is not available for nitrite stores");
+        return this;
     }
 
     @Override

@@ -60,7 +60,9 @@ public class InternalMockProcessorContext<KOut, VOut>
     private final Map<String, String> storeToChangelogTopic = new HashMap<>();
 
     public InternalMockProcessorContext() {
-        this(null,
+        this(
+                0,
+                null,
                 null,
                 null,
                 new StreamsMetricsImpl(new Metrics(), "mock", StreamsConfig.METRICS_LATEST, new MockTime()),
@@ -74,6 +76,7 @@ public class InternalMockProcessorContext<KOut, VOut>
     public InternalMockProcessorContext(final File stateDir,
                                         final StreamsConfig config) {
         this(
+                0,
                 stateDir,
                 null,
                 null,
@@ -92,6 +95,7 @@ public class InternalMockProcessorContext<KOut, VOut>
 
     public InternalMockProcessorContext(final StreamsMetricsImpl streamsMetrics) {
         this(
+                0,
                 null,
                 null,
                 null,
@@ -107,6 +111,7 @@ public class InternalMockProcessorContext<KOut, VOut>
                                         final StreamsConfig config,
                                         final RecordCollector collector) {
         this(
+                0,
                 stateDir,
                 null,
                 null,
@@ -128,6 +133,7 @@ public class InternalMockProcessorContext<KOut, VOut>
                                         final Serde<?> valueSerde,
                                         final StreamsConfig config) {
         this(
+                0,
                 stateDir,
                 keySerde,
                 valueSerde,
@@ -142,20 +148,21 @@ public class InternalMockProcessorContext<KOut, VOut>
     /**
      * Added for Nitrite store
      */
-    public InternalMockProcessorContext(final File stateDir, final StateSerdes<?, ?> serdes,
+    public InternalMockProcessorContext(final int partition, final File stateDir, final StateSerdes<?, ?> serdes,
                                         final RecordCollector collector) {
-        this(stateDir, serdes.keySerde(), serdes.valueSerde(), collector, null);
+        this(partition, stateDir, serdes.keySerde(), serdes.valueSerde(), collector, null);
     }
 
     public InternalMockProcessorContext(final StateSerdes<?, ?> serdes,
                                         final RecordCollector collector) {
-        this(null, serdes.keySerde(), serdes.valueSerde(), collector, null);
+        this(0, null, serdes.keySerde(), serdes.valueSerde(), collector, null);
     }
 
     public InternalMockProcessorContext(final StateSerdes<?, ?> serdes,
                                         final RecordCollector collector,
                                         final Metrics metrics) {
         this(
+                0,
                 null,
                 serdes.keySerde(),
                 serdes.valueSerde(),
@@ -167,12 +174,14 @@ public class InternalMockProcessorContext<KOut, VOut>
         );
     }
 
-    public InternalMockProcessorContext(final File stateDir,
+    public InternalMockProcessorContext(final int partition,
+                                        final File stateDir,
                                         final Serde<?> keySerde,
                                         final Serde<?> valueSerde,
                                         final RecordCollector collector,
                                         final ThreadCache cache) {
         this(
+                partition,
                 stateDir,
                 keySerde,
                 valueSerde,
@@ -184,7 +193,8 @@ public class InternalMockProcessorContext<KOut, VOut>
         );
     }
 
-    public InternalMockProcessorContext(final File stateDir,
+    public InternalMockProcessorContext(final int partition,
+                                        final File stateDir,
                                         final Serde<?> keySerde,
                                         final Serde<?> valueSerde,
                                         final StreamsMetricsImpl metrics,
@@ -193,7 +203,7 @@ public class InternalMockProcessorContext<KOut, VOut>
                                         final ThreadCache cache,
                                         final Time time) {
         super(
-                new TaskId(0, 0),
+                new TaskId(0, partition),
                 config,
                 metrics,
                 cache

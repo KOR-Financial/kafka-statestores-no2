@@ -1,6 +1,7 @@
-package io.techasylum.kafka.statestore.document;
+package io.techasylum.kafka.statestore.document.object;
 
 import java.util.List;
+import java.util.Map;
 
 public interface QueryCursor<V> extends Iterable<V> {
 
@@ -40,4 +41,6 @@ public interface QueryCursor<V> extends Iterable<V> {
      * @return list of all elements.
      * */
     List<V> toList();
+
+    Map<Integer, Integer> getNextOffsets();
 }

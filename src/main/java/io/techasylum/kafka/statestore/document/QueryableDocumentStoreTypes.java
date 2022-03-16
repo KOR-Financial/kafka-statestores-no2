@@ -1,11 +1,17 @@
 package io.techasylum.kafka.statestore.document;
 
+import io.techasylum.kafka.statestore.document.no2.composite.CompositeFindOptions;
+import io.techasylum.kafka.statestore.document.no2.composite.CompositeReadOnlyDocumentStore;
+import io.techasylum.kafka.statestore.document.object.ReadOnlyObjectDocumentStore;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.apache.kafka.streams.state.internals.StateStoreProvider;
+import org.dizitart.no2.Cursor;
+import org.dizitart.no2.Document;
+import org.dizitart.no2.Filter;
 
 import java.util.Collections;
 import java.util.Set;
@@ -22,21 +28,21 @@ public class QueryableDocumentStoreTypes {
      *
      * @param <K> key type of the store
      * @param <V> value type of the store
-     * @return {@link QueryableDocumentStoreTypes.DocumentStoreType}
+     * @return {@link CompositeDocumentStoreType}
      */
     public static <K, V, F, O> QueryableStoreType<ReadOnlyObjectDocumentStore<K, V, F, O>> documentObjectStore() {
-        return new QueryableDocumentStoreTypes.DocumentObjectStoreType<>();
+        throw new UnsupportedOperationException("Object stores not supported yet");
+        // return new QueryableDocumentStoreTypes.DocumentObjectStoreType<>();
     }
 
     /**
      * A {@link QueryableStoreType} that accepts {@link ReadOnlyObjectDocumentStore}.
      *
      * @param <K> key type of the store
-     * @param <V> value type of the store
-     * @return {@link QueryableDocumentStoreTypes.DocumentStoreType}
+     * @return {@link CompositeDocumentStoreType}
      */
-    public static <K, V, F, O> QueryableStoreType<ReadOnlyDocumentStore<K, V, F, O>> documentStore() {
-        return new QueryableDocumentStoreTypes.DocumentStoreType<>();
+    public static <K> QueryableStoreType<ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions>> documentStore() {
+        return new CompositeDocumentStoreType<>();
     }
 
     private static abstract class QueryableStoreTypeMatcher<T> implements QueryableStoreType<T> {
@@ -59,15 +65,15 @@ public class QueryableDocumentStoreTypes {
         }
     }
 
-    public static class DocumentStoreType<K, V, F, O> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyDocumentStore<K, V, F, O>> {
+    public static class CompositeDocumentStoreType<K> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions>> {
 
-        DocumentStoreType() {
+        CompositeDocumentStoreType() {
             super(Collections.singleton(ReadOnlyDocumentStore.class));
         }
 
         @Override
-        public ReadOnlyDocumentStore<K, V, F, O> create(final StateStoreProvider storeProvider,
-                                                              final String storeName) {
+        public ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions> create(final StateStoreProvider storeProvider,
+                                                                                               final String storeName) {
             return new CompositeReadOnlyDocumentStore<>(storeProvider, this, storeName);
         }
 
@@ -82,7 +88,7 @@ public class QueryableDocumentStoreTypes {
         @Override
         public ReadOnlyObjectDocumentStore<K, V, F, O> create(final StateStoreProvider storeProvider,
                                                               final String storeName) {
-            return new CompositeReadOnlyObjectDocumentStore<>(storeProvider, this, storeName);
+            throw new UnsupportedOperationException("Object stores not supported yet");
         }
 
     }

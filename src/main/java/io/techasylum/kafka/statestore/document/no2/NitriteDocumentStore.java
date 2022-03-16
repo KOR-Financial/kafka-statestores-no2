@@ -1,7 +1,6 @@
 package io.techasylum.kafka.statestore.document.no2;
 
 import io.techasylum.kafka.statestore.document.DocumentStore;
-import io.techasylum.kafka.statestore.document.ObjectDocumentStore;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.utils.Bytes;
@@ -20,9 +19,7 @@ import org.apache.kafka.streams.processor.internals.SerdeGetter;
 import org.apache.kafka.streams.state.StateSerdes;
 import org.dizitart.no2.*;
 import org.dizitart.no2.exceptions.NitriteException;
-import org.dizitart.no2.Cursor;
-import org.dizitart.no2.objects.ObjectFilter;
-import org.dizitart.no2.objects.filters.ObjectFilters;
+import org.dizitart.no2.filters.Filters;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,11 +33,13 @@ import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.p
 import static org.apache.kafka.streams.processor.internals.ProcessorContextUtils.asInternalProcessorContext;
 import static org.dizitart.no2.UpdateOptions.updateOptions;
 
-public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, FindOptions> {
-    final String name;
-    final Serde<K> keySerde;
-    final Serde<Document> valueSerde;
-    final String keyFieldName;
+public class NitriteDocumentStore<K> implements DocumentStore<K, Document, Cursor, Filter, FindOptions> {
+
+    private int partition;
+    private final String name;
+    private final Serde<K> keySerde;
+    private final Serde<Document> valueSerde;
+    private final String keyFieldName;
 
     StateSerdes<K, Document> serdes;
 
@@ -84,6 +83,7 @@ public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, F
     @Override
     public void init(StateStoreContext context, StateStore root) {
         this.context = asInternalProcessorContext(context);
+        partition = context.taskId().partition();
 
         initStoreSerde(context);
         openDB(context.appConfigs(), context.stateDir());
@@ -156,7 +156,7 @@ public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, F
         Objects.requireNonNull(key, "key cannot be null");
         validateStoreOpen();
 
-        Cursor items = this.collection.find(ObjectFilters.eq(keyFieldName, key));
+        Cursor items = this.collection.find(Filters.eq(keyFieldName, key));
 
         int cnt = items.totalCount();
         if (cnt == 0) {
@@ -169,7 +169,7 @@ public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, F
     }
 
     @Override
-    public Cursor find(ObjectFilter filter) {
+    public Cursor find(Filter filter) {
         Objects.requireNonNull(filter, "filter cannot be null");
         validateStoreOpen();
 
@@ -185,8 +185,7 @@ public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, F
     }
 
     @Override
-    public Cursor findWithOptions(ObjectFilter filter, FindOptions findOptions) {
-        Objects.requireNonNull(filter, "filter cannot be null");
+    public Cursor findWithOptions(Filter filter, FindOptions findOptions) {
         Objects.requireNonNull(findOptions, "findOptions cannot be null");
         validateStoreOpen();
 
@@ -250,7 +249,7 @@ public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, F
 // == Internal Operations (no logging) ================================================================================
 
     protected synchronized void store(K key, Document value) {
-        this.collection.update(ObjectFilters.eq(keyFieldName, key), value, updateOptions(true));
+        this.collection.update(Filters.eq(keyFieldName, key), value, updateOptions(true));
     }
 
     protected synchronized Document storeIfAbsent(K key, Document value) {
@@ -264,7 +263,7 @@ public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, F
 
     protected synchronized void storeAll(List<KeyValue<K, Document>> entries) {
         for (KeyValue<K, Document> entry : entries) {
-            this.collection.update(ObjectFilters.eq(keyFieldName, entry.key), entry.value, updateOptions(true));
+            this.collection.update(Filters.eq(keyFieldName, entry.key), entry.value, updateOptions(true));
         }
     }
 
@@ -274,9 +273,14 @@ public class NitriteDocumentStore<K> implements DocumentStore<K, ObjectFilter, F
             return null;
         }
 
-        this.collection.remove(ObjectFilters.eq(keyFieldName, key));
+        this.collection.remove(Filters.eq(keyFieldName, key));
 
         return result;
+    }
+
+    @Override
+    public int getPartition() {
+        return partition;
     }
 
 // == Replay ==========================================================================================================
