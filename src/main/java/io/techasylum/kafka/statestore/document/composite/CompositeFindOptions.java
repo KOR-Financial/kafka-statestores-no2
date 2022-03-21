@@ -1,4 +1,4 @@
-package io.techasylum.kafka.statestore.document.no2.composite;
+package io.techasylum.kafka.statestore.document.composite;
 
 import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.NullOrder;

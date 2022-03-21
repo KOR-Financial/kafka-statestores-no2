@@ -1,12 +1,12 @@
 package io.techasylum.kafka.statestore.document;
 
+import io.techasylum.kafka.statestore.document.composite.CompositeCursor;
+import io.techasylum.kafka.statestore.document.composite.CompositeFindOptions;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
-import org.dizitart.no2.Cursor;
 import org.dizitart.no2.Document;
 import org.dizitart.no2.Filter;
-import org.dizitart.no2.FindOptions;
 
-public interface ReadOnlyDocumentStore<Key> {
+public interface ReadOnlyCompositeDocumentStore<Key> {
 
     /**
      * Applies a filter on the store and returns a cursor to the
@@ -19,7 +19,7 @@ public interface ReadOnlyDocumentStore<Key> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `filter` is null.
      */
-    Cursor find(Filter filter);
+    CompositeCursor find(Filter filter);
 
     /**
      * Returns a customized cursor to all objects in the store.
@@ -28,7 +28,7 @@ public interface ReadOnlyDocumentStore<Key> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `findOptions` is null.
      */
-    Cursor findWithOptions(FindOptions options);
+    CompositeCursor findWithOptions(CompositeFindOptions options);
 
     /**
      * Applies a filter on the store and returns a customized cursor to the
@@ -42,7 +42,7 @@ public interface ReadOnlyDocumentStore<Key> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `findOptions` is null.
      */
-    Cursor findWithOptions(Filter filter, FindOptions options);
+    CompositeCursor findWithOptions(Filter filter, CompositeFindOptions options);
 
 
     /**
@@ -54,7 +54,5 @@ public interface ReadOnlyDocumentStore<Key> {
      * @throws InvalidStateStoreException if the store is not initialized
      */
     Document get(Key key);
-
-    int getPartition();
 
 }

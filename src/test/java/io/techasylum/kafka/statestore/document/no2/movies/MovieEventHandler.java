@@ -1,15 +1,9 @@
 package io.techasylum.kafka.statestore.document.no2.movies;
 
-import io.techasylum.kafka.statestore.document.DocumentStore;
-import io.techasylum.kafka.statestore.document.no2.composite.CompositeFindOptions;
+import io.techasylum.kafka.statestore.document.WritableDocumentStore;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
-import org.dizitart.no2.Cursor;
-import org.dizitart.no2.Document;
-import org.dizitart.no2.Filter;
-import org.dizitart.no2.FindOptions;
-import org.dizitart.no2.objects.ObjectFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +14,7 @@ public class MovieEventHandler implements Processor<String, MovieEvent, String, 
     private final Logger LOGGER = LoggerFactory.getLogger(MovieEventHandler.class);
 
     private ProcessorContext<String, MovieCommandFeedback> context;
-    private DocumentStore<String, Document, Cursor, Filter, FindOptions> store;
+    private WritableDocumentStore<String> store;
     private final MovieConverter movieConverter = new MovieConverter();
 
     @Override

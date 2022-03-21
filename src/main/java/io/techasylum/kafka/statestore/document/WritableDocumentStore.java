@@ -2,10 +2,11 @@ package io.techasylum.kafka.statestore.document;
 
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.StateStore;
+import org.dizitart.no2.Document;
 
 import java.util.List;
 
-public interface DocumentStore<Key, Doc, Curs, Filter, Options> extends StateStore, ReadOnlyDocumentStore<Key, Doc, Curs, Filter, Options> {
+public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocumentStore<Key> {
 
     /**
      * Update the value associated with this key.
@@ -15,7 +16,7 @@ public interface DocumentStore<Key, Doc, Curs, Filter, Options> extends StateSto
      *              if the serialized bytes are also {@code null} it is interpreted as deletes
      * @throws NullPointerException If {@code null} is used for key.
      */
-    void put(Key key, Doc value);
+    void put(Key key, Document value);
 
     /**
      * Update the value associated with this key, unless a value is already associated with the key.
@@ -26,7 +27,7 @@ public interface DocumentStore<Key, Doc, Curs, Filter, Options> extends StateSto
      * @return The old value or {@code null} if there is no such key.
      * @throws NullPointerException If {@code null} is used for key.
      */
-    Doc putIfAbsent(Key key, Doc value);
+    Document putIfAbsent(Key key, Document value);
 
     /**
      * Update all the given key/value pairs.
@@ -35,7 +36,7 @@ public interface DocumentStore<Key, Doc, Curs, Filter, Options> extends StateSto
      *                if the serialized bytes are also {@code null} it is interpreted as deletes
      * @throws NullPointerException If {@code null} is used for key.
      */
-    void putAll(List<KeyValue<Key, Doc>> entries);
+    void putAll(List<KeyValue<Key, Document>> entries);
 
     /**
      * Delete the value from the store (if there is one).
@@ -44,5 +45,5 @@ public interface DocumentStore<Key, Doc, Curs, Filter, Options> extends StateSto
      * @return The old value or {@code null} if there is no such key.
      * @throws NullPointerException If {@code null} is used for key.
      */
-    Doc delete(Key key);
+    Document delete(Key key);
 }

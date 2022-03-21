@@ -1,5 +1,6 @@
-package io.techasylum.kafka.statestore.document.no2.composite;
+package io.techasylum.kafka.statestore.document.composite;
 
+import io.techasylum.kafka.statestore.document.ReadOnlyCompositeDocumentStore;
 import io.techasylum.kafka.statestore.document.ReadOnlyDocumentStore;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.state.QueryableStoreType;
@@ -14,32 +15,31 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * A wrapper over the underlying {@link ReadOnlyDocumentStore}s found in a {@link
+ * A wrapper over the underlying {@link ReadOnlyCompositeDocumentStore}s found in a {@link
  * org.apache.kafka.streams.processor.internals.ProcessorTopology}
  *
  * @param <K> key type
  */
-public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions> {
+public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyCompositeDocumentStore<K> {
 
     private final StateStoreProvider storeProvider;
-    private final QueryableStoreType<ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions>> storeType;
+    private final QueryableStoreType<ReadOnlyDocumentStore<K>> storeType;
     private final String storeName;
 
     public CompositeReadOnlyDocumentStore(final StateStoreProvider storeProvider,
-                                          final QueryableStoreType<ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions>> storeType,
+                                          final QueryableStoreType<ReadOnlyDocumentStore<K>> storeType,
                                           final String storeName) {
         this.storeProvider = storeProvider;
         this.storeType = storeType;
         this.storeName = storeName;
     }
 
-
     @Override
     public Document get(final K key) {
         Objects.requireNonNull(key);
-        final List<ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions>> stores = storeProvider.stores(storeName, storeType);
+        final List<ReadOnlyDocumentStore<K>> stores = storeProvider.stores(storeName, storeType);
         // TODO: use the KeyMetadata to resolve the partition directly and optimize the lookup instead of going through each of the partitions
-        for (final ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions> store : stores) {
+        for (final ReadOnlyDocumentStore<K> store : stores) {
             try {
                 final Document result = store.get(key);
                 if (result != null) {
@@ -54,11 +54,11 @@ public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyDocumentStore<
     }
 
     @Override
-    public Cursor find(Filter filter) {
+    public CompositeCursor find(Filter filter) {
         Objects.requireNonNull(filter);
-        final List<ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions>> stores = storeProvider.stores(storeName, storeType);
+        final List<ReadOnlyDocumentStore<K>> stores = storeProvider.stores(storeName, null);
         Map<Integer, Cursor> cursors = new HashMap<>();
-        for (final ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions> store : stores) {
+        for (final ReadOnlyDocumentStore<K> store : stores) {
             try {
                 final Cursor result = store.find(filter);
                 if (result != null) {
@@ -72,16 +72,16 @@ public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyDocumentStore<
     }
 
     @Override
-    public Cursor findWithOptions(CompositeFindOptions compositeFindOptions) {
+    public CompositeCursor findWithOptions(CompositeFindOptions compositeFindOptions) {
         return findWithOptions(null, compositeFindOptions);
     }
 
     @Override
-    public Cursor findWithOptions(Filter filter, CompositeFindOptions compositeFindOptions) {
+    public CompositeCursor findWithOptions(Filter filter, CompositeFindOptions compositeFindOptions) {
         Objects.requireNonNull(compositeFindOptions);
-        final List<ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions>> stores = storeProvider.stores(storeName, storeType);
+        final List<ReadOnlyDocumentStore<K>> stores = storeProvider.stores(storeName, null);
         Map<Integer, Cursor> cursors = new HashMap<>();
-        for (final ReadOnlyDocumentStore<K, Document, Cursor, Filter, CompositeFindOptions> store : stores) {
+        for (final ReadOnlyDocumentStore<K> store : stores) {
             try {
                 int partition = store.getPartition();
                 CompositeFindOptions findOptions = compositeFindOptions.getFindOptionsForPartition(partition);
@@ -95,10 +95,5 @@ public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyDocumentStore<
 
         }
         return new CompositeCursor(cursors, compositeFindOptions);
-    }
-
-    @Override
-    public int getPartition() {
-        return 0;
     }
 }

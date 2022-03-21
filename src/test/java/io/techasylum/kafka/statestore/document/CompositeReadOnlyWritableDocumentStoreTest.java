@@ -2,13 +2,13 @@ package io.techasylum.kafka.statestore.document;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.techasylum.kafka.statestore.document.no2.composite.CompositeReadOnlyDocumentStore;
+import io.techasylum.kafka.statestore.document.composite.CompositeReadOnlyDocumentStore;
 import io.techasylum.kafka.statestore.document.internals.InternalMockProcessorContext;
 import io.techasylum.kafka.statestore.document.internals.MockRecordCollector;
 import io.techasylum.kafka.statestore.document.internals.StateStoreProviderStub;
 import io.techasylum.kafka.statestore.document.internals.WrappingStoreProvider;
-import io.techasylum.kafka.statestore.document.no2.composite.CompositeCursor;
-import io.techasylum.kafka.statestore.document.no2.composite.CompositeFindOptions;
+import io.techasylum.kafka.statestore.document.composite.CompositeCursor;
+import io.techasylum.kafka.statestore.document.composite.CompositeFindOptions;
 import io.techasylum.kafka.statestore.document.no2.NitriteDocumentStore;
 import io.techasylum.kafka.statestore.document.no2.movies.Movie;
 import org.apache.kafka.common.serialization.Serde;
@@ -43,7 +43,7 @@ import static org.dizitart.no2.SortOrder.Ascending;
 import static org.dizitart.no2.SortOrder.Descending;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class CompositeReadOnlyDocumentStoreTest {
+public class CompositeReadOnlyWritableDocumentStoreTest {
 
     private final String storeName = "my-store";
     private StateStoreProviderStub stubProviderTwo;
@@ -52,7 +52,7 @@ public class CompositeReadOnlyDocumentStoreTest {
     private CompositeReadOnlyDocumentStore<String> theStore;
     private final Serde<Document> movieSerde = new JsonSerde<>(Document.class);
 
-    ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
     private final Movie speed = new Movie("SPEED", "Speed", 1994, 7.3f);
     private final Movie matrix1 = new Movie("MTRX1", "The Matrix", 1999, 8.7f);
@@ -136,7 +136,7 @@ public class CompositeReadOnlyDocumentStoreTest {
 
     @Test
     public void shouldFindValueForKeyWhenMultiStores() throws IOException {
-        final DocumentStore<String, Document, Cursor, Filter, FindOptions> store = newStoreInstance(3);
+        final WritableDocumentStore<String> store = newStoreInstance(3);
         stubProviderTwo.addStore(storeName, store);
 
         store.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -201,7 +201,7 @@ public class CompositeReadOnlyDocumentStoreTest {
 
     @Test
     public void shouldSupportFindAcrossMultipleStores() throws IOException {
-        final DocumentStore<String, Document, Cursor, Filter, FindOptions> store = newStoreInstance(3);
+        final WritableDocumentStore<String> store = newStoreInstance(3);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -216,7 +216,7 @@ public class CompositeReadOnlyDocumentStoreTest {
 
     @Test
     public void shouldSupportLimitAcrossMultipleStores() throws IOException {
-        final DocumentStore<String, Document, Cursor, Filter, FindOptions> store = newStoreInstance(1);
+        final WritableDocumentStore<String> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -239,7 +239,7 @@ public class CompositeReadOnlyDocumentStoreTest {
 
     @Test
     public void shouldSupportLimitAcrossMultipleStoresWithAllPageSizes() throws IOException {
-        final DocumentStore<String, Document, Cursor, Filter, FindOptions> store = newStoreInstance(1);
+        final WritableDocumentStore<String> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -285,7 +285,7 @@ public class CompositeReadOnlyDocumentStoreTest {
     // TODO: we don't expect partitions to change, and if they do pagination should be reset either way, so should we be more strict on this?
     @Test
     public void shouldSupportOffsetsForUnknownPartitions() throws IOException {
-        final DocumentStore<String, Document, Cursor, Filter, FindOptions> store = newStoreInstance(1);
+        final WritableDocumentStore<String> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         Cursor movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
@@ -300,7 +300,7 @@ public class CompositeReadOnlyDocumentStoreTest {
     // TODO: what if the state store shrinks as we paginate through it, due to retention policies or tombstone records?
     @Test
     public void shouldThrowExceptionOnInvalidOffsetsForExistingPartitions() throws IOException {
-        final DocumentStore<String, Document, Cursor, Filter, FindOptions> store = newStoreInstance(1);
+        final WritableDocumentStore<String> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         assertThrows(ValidationException.class, () -> theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(Map.of(0, 999, 1, 0), 2)));
@@ -308,7 +308,7 @@ public class CompositeReadOnlyDocumentStoreTest {
 
     @Test
     public void shouldSupportLimitAcrossMultipleStoresWithAllElementsOfFirstPageInSamePartition() throws IOException {
-        final DocumentStore<String, Document, Cursor, Filter, FindOptions> store = newStoreInstance(1);
+        final WritableDocumentStore<String> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));

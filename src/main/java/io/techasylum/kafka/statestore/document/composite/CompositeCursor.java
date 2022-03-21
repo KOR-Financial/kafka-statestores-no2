@@ -1,4 +1,4 @@
-package io.techasylum.kafka.statestore.document.no2.composite;
+package io.techasylum.kafka.statestore.document.composite;
 
 import org.dizitart.no2.*;
 import org.dizitart.no2.exceptions.InvalidOperationException;
@@ -21,13 +21,43 @@ import static org.dizitart.no2.util.StringUtils.isNullOrEmpty;
 
 public class CompositeCursor implements Cursor {
 
-    Logger logger = LoggerFactory.getLogger(CompositeCursor.class);
+    private static final Logger logger = LoggerFactory.getLogger(CompositeCursor.class);
 
     private final Map<NitriteId, Document> compositeUnderlyingMap = new HashMap<>();
     private final Map<Integer, Integer> nextOffsets;
     private Set<NitriteId> resultSet = new HashSet<>();
     private boolean hasMore;
     private int totalCount;
+
+    // TODO: write tests, validate, refactor
+    public CompositeCursor(List<CompositeCursor> compositeCursors, CompositeFindOptions compositeFindOptions) {
+        Set<NitriteId> nitriteIdSet = extractIdsAndUpdateCompositeMapFromCursors(compositeCursors);
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Extracted {} from composite cursors {} using {}", this, compositeCursors, compositeFindOptions);
+        }
+
+        if (!nitriteIdSet.isEmpty()) {
+            // TODO validateLimit(compositeFindOptions.getFindOptionsForPartition(), nitriteIdSet.size());
+            resultSet = nitriteIdSet;
+
+            if (compositeFindOptions != null) {
+                if (isNullOrEmpty(compositeFindOptions.getField())) {
+                    resultSet = limitIdSet(nitriteIdSet, compositeFindOptions);
+                } else {
+                    resultSet = sortIdSet(nitriteIdSet, compositeFindOptions);
+                }
+            }
+            totalCount = compositeCursors.stream().mapToInt(Cursor::totalCount).sum();
+            compositeUnderlyingMap.keySet().retainAll(resultSet);
+            hasMore = compositeCursors.parallelStream().anyMatch(RecordIterable::hasMore) || !resultSet.containsAll(nitriteIdSet);
+        }
+        nextOffsets = calculateNextOffsets(compositeCursors, resultSet, compositeUnderlyingMap, compositeFindOptions);
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Returning {} from composite cursors {} using {}", this, compositeCursors, compositeFindOptions);
+        }
+    }
 
     public CompositeCursor(Map<Integer, Cursor> cursorsByPartition) {
         this(cursorsByPartition, null);
@@ -79,8 +109,33 @@ public class CompositeCursor implements Cursor {
         return nitriteIdSet;
     }
 
+    @NotNull
+    private Set<NitriteId> extractIdsAndUpdateCompositeMapFromCursors(List<CompositeCursor> compositeCursors) {
+        Set<NitriteId> nitriteIdSet = new HashSet<>();
+        for (CompositeCursor compositeCursor : compositeCursors) {
+            for (NitriteId nitriteId : compositeCursor.idSet()) {
+                NitriteId newId = NitriteId.newId();
+                Document doc = compositeCursor.getCompositeUnderlyingMap().get(nitriteId);
+                doc.put("_id", newId.getIdValue());
+                compositeUnderlyingMap.put(newId, doc);
+                nitriteIdSet.add(newId);
+            }
+        }
+        return nitriteIdSet;
+    }
+
     private Map<Integer, Integer> calculateNextOffsets(Map<Integer, Cursor> cursorsByPartition, Set<NitriteId> resultSet, Map<NitriteId, Document> compositeUnderlyingMap, CompositeFindOptions compositeFindOptions) {
         Map<Integer, Integer> originalOffsetsByPartition = getOriginalOffsetsByPartition(cursorsByPartition, compositeFindOptions);
+        Map<Integer, Long> offsetDeltas = resultSet.stream().map((id) -> (Integer) compositeUnderlyingMap.get(id).get("_pid")).collect(Collectors.groupingBy(identity(), counting()));
+        Map<Integer, Integer> newOffsetsByPartition = new HashMap<>(originalOffsetsByPartition);
+        for (Integer key : offsetDeltas.keySet()) {
+            newOffsetsByPartition.put(key, originalOffsetsByPartition.get(key) + offsetDeltas.get(key).intValue());
+        }
+        return newOffsetsByPartition;
+    }
+
+    private Map<Integer, Integer> calculateNextOffsets(List<CompositeCursor> compositeCursors, Set<NitriteId> resultSet, Map<NitriteId, Document> compositeUnderlyingMap, CompositeFindOptions compositeFindOptions) {
+        Map<Integer, Integer> originalOffsetsByPartition = getOriginalOffsetsByPartition(compositeCursors, compositeFindOptions);
         Map<Integer, Long> offsetDeltas = resultSet.stream().map((id) -> (Integer) compositeUnderlyingMap.get(id).get("_pid")).collect(Collectors.groupingBy(identity(), counting()));
         Map<Integer, Integer> newOffsetsByPartition = new HashMap<>(originalOffsetsByPartition);
         for (Integer key : offsetDeltas.keySet()) {
@@ -94,6 +149,16 @@ public class CompositeCursor implements Cursor {
         if (compositeFindOptions == null || compositeFindOptions.getOffsetsByPartition() == null) {
             originalOffsetsByPartition = new HashMap<>();
             cursorsByPartition.keySet().forEach((key) -> originalOffsetsByPartition.put(key, 0));
+        } else {
+            originalOffsetsByPartition = compositeFindOptions.getOffsetsByPartition();
+        }
+        return originalOffsetsByPartition;
+    }
+
+    private Map<Integer, Integer> getOriginalOffsetsByPartition(List<CompositeCursor> compositeCursors, CompositeFindOptions compositeFindOptions) {
+        final Map<Integer, Integer> originalOffsetsByPartition;
+        if (compositeFindOptions == null || compositeFindOptions.getOffsetsByPartition() == null) {
+            originalOffsetsByPartition = compositeCursors.get(0).getNextOffsets(); // TODO: check this
         } else {
             originalOffsetsByPartition = compositeFindOptions.getOffsetsByPartition();
         }
@@ -281,6 +346,10 @@ public class CompositeCursor implements Cursor {
 
     public Map<Integer, Integer> getNextOffsets() {
         return nextOffsets;
+    }
+
+    public Map<NitriteId, Document> getCompositeUnderlyingMap() {
+        return compositeUnderlyingMap;
     }
 
     @Override

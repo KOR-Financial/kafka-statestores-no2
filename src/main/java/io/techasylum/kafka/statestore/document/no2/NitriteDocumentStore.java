@@ -1,6 +1,6 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import io.techasylum.kafka.statestore.document.DocumentStore;
+import io.techasylum.kafka.statestore.document.WritableDocumentStore;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.utils.Bytes;
@@ -33,7 +33,7 @@ import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.p
 import static org.apache.kafka.streams.processor.internals.ProcessorContextUtils.asInternalProcessorContext;
 import static org.dizitart.no2.UpdateOptions.updateOptions;
 
-public class NitriteDocumentStore<K> implements DocumentStore<K, Document, Cursor, Filter, FindOptions> {
+public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
     private int partition;
     private final String name;
