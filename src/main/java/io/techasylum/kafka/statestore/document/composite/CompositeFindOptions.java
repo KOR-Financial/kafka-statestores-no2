@@ -1,11 +1,13 @@
 package io.techasylum.kafka.statestore.document.composite;
 
+import java.text.Collator;
+import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.NullOrder;
 import org.dizitart.no2.SortOrder;
-
-import java.text.Collator;
-import java.util.Map;
 
 public class CompositeFindOptions extends FindOptions {
 
@@ -17,7 +19,8 @@ public class CompositeFindOptions extends FindOptions {
      * @param offsetsByPartition the pagination offsets per partition.
      * @param size   the number of records per page.
      */
-    public CompositeFindOptions(Map<Integer, Integer> offsetsByPartition, int size) {
+    @JsonCreator
+    public CompositeFindOptions(@JsonProperty("offsetsByPartition") Map<Integer, Integer> offsetsByPartition, @JsonProperty("size") int size) {
         super(0, size);
         this.offsetsByPartition = offsetsByPartition;
     }
@@ -177,5 +180,9 @@ public class CompositeFindOptions extends FindOptions {
                 "super=" + super.toString() +
                 "offsetsByPartition=" + offsetsByPartition +
                 '}';
+    }
+
+    public static CompositeFindOptions defaultOptions() {
+        return new CompositeFindOptions(Map.of(0, 0, 1, 0), 100);
     }
 }

@@ -1,14 +1,22 @@
 package io.techasylum.kafka.statestore.document;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.techasylum.kafka.statestore.document.composite.CompositeCursor;
+import io.techasylum.kafka.statestore.document.composite.CompositeFindOptions;
 import io.techasylum.kafka.statestore.document.composite.CompositeReadOnlyDocumentStore;
 import io.techasylum.kafka.statestore.document.internals.InternalMockProcessorContext;
 import io.techasylum.kafka.statestore.document.internals.MockRecordCollector;
 import io.techasylum.kafka.statestore.document.internals.StateStoreProviderStub;
 import io.techasylum.kafka.statestore.document.internals.WrappingStoreProvider;
-import io.techasylum.kafka.statestore.document.composite.CompositeCursor;
-import io.techasylum.kafka.statestore.document.composite.CompositeFindOptions;
 import io.techasylum.kafka.statestore.document.no2.NitriteDocumentStore;
 import io.techasylum.kafka.statestore.document.no2.movies.Movie;
 import org.apache.kafka.common.serialization.Serde;
@@ -19,7 +27,7 @@ import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.StateSerdes;
 import org.apache.kafka.streams.state.internals.CompositeReadOnlyKeyValueStore;
-import org.dizitart.no2.*;
+import org.dizitart.no2.Cursor;
 import org.dizitart.no2.Document;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.filters.Filters;
@@ -28,20 +36,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.support.serializer.JsonSerde;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.dizitart.no2.SortOrder.Ascending;
 import static org.dizitart.no2.SortOrder.Descending;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CompositeReadOnlyWritableDocumentStoreTest {
 
@@ -72,8 +74,8 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         otherUnderlyingStore = newStoreInstance(1);
         stubProviderOne.addStore("other-store", 3, otherUnderlyingStore);
         theStore = new CompositeReadOnlyDocumentStore<>(
-                new WrappingStoreProvider(asList(stubProviderOne, stubProviderTwo), StoreQueryParameters.fromNameAndType(storeName, QueryableDocumentStoreTypes.documentStore())),
-                QueryableDocumentStoreTypes.documentStore(),
+                new WrappingStoreProvider(asList(stubProviderOne, stubProviderTwo), StoreQueryParameters.fromNameAndType(storeName, new QueryableDocumentStoreTypes.DocumentStoreType<>())),
+                new QueryableDocumentStoreTypes.DocumentStoreType<>(),
                 storeName
         );
     }

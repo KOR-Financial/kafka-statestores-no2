@@ -1,6 +1,30 @@
 package io.techasylum.kafka.statestore.document.composite;
 
-import org.dizitart.no2.*;
+import java.text.Collator;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.dizitart.no2.Cursor;
+import org.dizitart.no2.Document;
+import org.dizitart.no2.KeyValuePair;
+import org.dizitart.no2.Lookup;
+import org.dizitart.no2.NitriteId;
+import org.dizitart.no2.NullOrder;
+import org.dizitart.no2.RecordIterable;
+import org.dizitart.no2.SortOrder;
 import org.dizitart.no2.exceptions.InvalidOperationException;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.internals.DocumentCursorInternals;
@@ -9,13 +33,11 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.Collator;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.counting;
-import static org.dizitart.no2.exceptions.ErrorMessage.*;
+import static org.dizitart.no2.exceptions.ErrorMessage.PROJECTION_WITH_NOT_NULL_VALUES;
+import static org.dizitart.no2.exceptions.ErrorMessage.REMOVE_ON_DOCUMENT_ITERATOR_NOT_SUPPORTED;
+import static org.dizitart.no2.exceptions.ErrorMessage.UNABLE_TO_SORT_ON_ARRAY;
 import static org.dizitart.no2.util.DocumentUtils.getFieldValue;
 import static org.dizitart.no2.util.StringUtils.isNullOrEmpty;
 
@@ -23,78 +45,218 @@ public class CompositeCursor implements Cursor {
 
     private static final Logger logger = LoggerFactory.getLogger(CompositeCursor.class);
 
-    private final Map<NitriteId, Document> compositeUnderlyingMap = new HashMap<>();
+    private final Map<NitriteId, Document> documents;
     private final Map<Integer, Integer> nextOffsets;
-    private Set<NitriteId> resultSet = new HashSet<>();
-    private boolean hasMore;
-    private int totalCount;
+    private final Set<NitriteId> resultSet;
+    private final boolean hasMore;
+    private final int totalCount;
 
-    // TODO: write tests, validate, refactor
-    public CompositeCursor(List<CompositeCursor> compositeCursors, CompositeFindOptions compositeFindOptions) {
-        Set<NitriteId> nitriteIdSet = extractIdsAndUpdateCompositeMapFromCursors(compositeCursors);
+    @JsonCreator
+    private CompositeCursor(@JsonProperty("documents") Map<NitriteId, Document> documents, @JsonProperty("resultSet") Set<NitriteId> resultSet,
+            @JsonProperty("nextOffsets") Map<Integer, Integer> nextOffsets, @JsonProperty("hasMore") boolean hasMore, @JsonProperty("totalCount") int totalCount) {
+        this.documents = documents;
+        this.nextOffsets = nextOffsets;
+        this.resultSet = resultSet;
+        this.hasMore = hasMore;
+        this.totalCount = totalCount;
+    }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("Extracted {} from composite cursors {} using {}", this, compositeCursors, compositeFindOptions);
+    public Map<NitriteId, Document> getDocuments() {
+        return Collections.unmodifiableMap(documents);
+    }
+
+    public Map<Integer, Integer> getNextOffsets() {
+        return Collections.unmodifiableMap(nextOffsets);
+    }
+
+    public Set<NitriteId> getResultSet() {
+        return Collections.unmodifiableSet(resultSet);
+    }
+
+    @Override
+    public boolean hasMore() {
+        return hasMore;
+    }
+
+    @Override
+    public int totalCount() {
+        return totalCount;
+    }
+
+    @Override
+    public RecordIterable<Document> project(Document projection) {
+        validateProjection(projection);
+//        return new ProjectedDocumentIterable(projection, findResult);
+        throw new UnsupportedOperationException("Projections not yet supported");
+    }
+
+    @Override
+    public RecordIterable<Document> join(Cursor cursor, Lookup lookup) {
+//        return new JoinedDocumentIterable(findResult, cursor, lookup);
+        throw new UnsupportedOperationException("Joins not yet supported");
+    }
+
+    @Override
+    public Set<NitriteId> idSet() {
+        return resultSet;
+    }
+
+    @Override
+    public Iterator<Document> iterator() {
+        return new CompositeCursor.DocumentCursorIterator();
+    }
+
+    @Override
+    public int size() {
+        return resultSet.size();
+    }
+
+    @Override
+    public Document firstOrDefault() {
+        return Iterables.firstOrDefault(this);
+    }
+
+    @Override
+    public List<Document> toList() {
+        return Iterables.toList(this);
+    }
+
+    private class DocumentCursorIterator implements Iterator<Document> {
+        private Iterator<NitriteId> iterator;
+
+        DocumentCursorIterator() {
+            iterator = resultSet.iterator();
         }
 
+        @Override
+        public boolean hasNext() {
+            return iterator.hasNext();
+        }
+
+        @Override
+        public Document next() {
+            NitriteId next = iterator.next();
+            Document document = documents.get(next);
+            if (document != null) {
+                return new Document(document);
+            }
+            return null;
+        }
+
+        @Override
+        public void remove() {
+            throw new InvalidOperationException(REMOVE_ON_DOCUMENT_ITERATOR_NOT_SUPPORTED);
+        }
+    }
+
+    private void validateProjection(Document projection) {
+        for (KeyValuePair kvp : projection) {
+            validateKeyValuePair(kvp);
+        }
+    }
+
+    private void validateKeyValuePair(KeyValuePair kvp) {
+        if (kvp.getValue() != null) {
+            if (!(kvp.getValue() instanceof Document)) {
+                throw new ValidationException(PROJECTION_WITH_NOT_NULL_VALUES);
+            } else {
+                validateProjection((Document) kvp.getValue());
+            }
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "CompositeCursor{" +
+                "documents=" + documents +
+                ", nextOffsets=" + nextOffsets +
+                ", resultSet=" + resultSet +
+                ", hasMore=" + hasMore +
+                ", totalCount=" + totalCount +
+                '}';
+    }
+
+    // TODO: write tests, validate, refactor
+    public static CompositeCursor of(List<CompositeCursor> compositeCursors, CompositeFindOptions compositeFindOptions) {
+        Map<NitriteId, Document> documents = extractDocumentsFromCursors(compositeCursors);
+        Set<NitriteId> nitriteIdSet = documents.keySet();
+
+        int totalCount = 0;
+        boolean hasMore = false;
         if (!nitriteIdSet.isEmpty()) {
             // TODO validateLimit(compositeFindOptions.getFindOptionsForPartition(), nitriteIdSet.size());
-            resultSet = nitriteIdSet;
-
+            Set<NitriteId> originalNitriteIdSet = new HashSet<>(nitriteIdSet);
             if (compositeFindOptions != null) {
                 if (isNullOrEmpty(compositeFindOptions.getField())) {
-                    resultSet = limitIdSet(nitriteIdSet, compositeFindOptions);
+                    nitriteIdSet = limitDocuments(documents, compositeFindOptions);
                 } else {
-                    resultSet = sortIdSet(nitriteIdSet, compositeFindOptions);
+                    nitriteIdSet = sortDocuments(documents, compositeFindOptions);
                 }
             }
             totalCount = compositeCursors.stream().mapToInt(Cursor::totalCount).sum();
-            compositeUnderlyingMap.keySet().retainAll(resultSet);
-            hasMore = compositeCursors.parallelStream().anyMatch(RecordIterable::hasMore) || !resultSet.containsAll(nitriteIdSet);
+            documents.keySet().retainAll(nitriteIdSet);
+            hasMore = compositeCursors.parallelStream().anyMatch(RecordIterable::hasMore) || !nitriteIdSet.containsAll(originalNitriteIdSet);
         }
-        nextOffsets = calculateNextOffsets(compositeCursors, resultSet, compositeUnderlyingMap, compositeFindOptions);
+        Map<Integer, Integer> nextOffsets = calculateNextOffsets(compositeCursors, nitriteIdSet, documents, compositeFindOptions);
 
+        CompositeCursor cursor = new CompositeCursor(documents, nitriteIdSet, nextOffsets, hasMore, totalCount);
         if (logger.isDebugEnabled()) {
-            logger.debug("Returning {} from composite cursors {} using {}", this, compositeCursors, compositeFindOptions);
+            logger.debug("Returning {} from composite cursors {} using {}", cursor, compositeCursors, compositeFindOptions);
         }
+        return cursor;
     }
 
-    public CompositeCursor(Map<Integer, Cursor> cursorsByPartition) {
-        this(cursorsByPartition, null);
+    public static CompositeCursor of(Map<Integer, Cursor> cursorsByPartition) {
+        return CompositeCursor.of(cursorsByPartition, null);
     }
 
-    public CompositeCursor(Map<Integer, Cursor> cursorsByPartition, CompositeFindOptions compositeFindOptions) {
-        Set<NitriteId> nitriteIdSet = extractIdsAndUpdateCompositeMapFromCursors(cursorsByPartition);
+    public static CompositeCursor of(Map<Integer, Cursor> cursorsByPartition, CompositeFindOptions compositeFindOptions) {
+        Map<NitriteId, Document> documents = extractDocumentsFromCursors(cursorsByPartition);
+        Set<NitriteId> nitriteIdSet = documents.keySet();
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("Extracted {} from cursors by partition {} using {}", this, cursorsByPartition, compositeFindOptions);
-        }
-
+        int totalCount = 0;
+        boolean hasMore = false;
         if (!nitriteIdSet.isEmpty()) {
-        // TODO validateLimit(compositeFindOptions.getFindOptionsForPartition(), nitriteIdSet.size());
-            resultSet = nitriteIdSet;
+            // TODO validateLimit(compositeFindOptions.getFindOptionsForPartition(), nitriteIdSet.size());
+            Set<NitriteId> originalNitriteIdSet = new HashSet<>(nitriteIdSet);
 
             if (compositeFindOptions != null) {
                 if (isNullOrEmpty(compositeFindOptions.getField())) {
-                    resultSet = limitIdSet(nitriteIdSet, compositeFindOptions);
+                    nitriteIdSet = limitDocuments(originalNitriteIdSet, compositeFindOptions);
                 } else {
-                    resultSet = sortIdSet(nitriteIdSet, compositeFindOptions);
+                    nitriteIdSet = sortDocuments(documents, compositeFindOptions);
                 }
             }
             totalCount = cursorsByPartition.values().stream().mapToInt(Cursor::totalCount).sum();
-            compositeUnderlyingMap.keySet().retainAll(resultSet);
-            hasMore = cursorsByPartition.values().parallelStream().anyMatch(RecordIterable::hasMore) || !resultSet.containsAll(nitriteIdSet);
+            documents.keySet().retainAll(nitriteIdSet);
+            hasMore = cursorsByPartition.values().parallelStream().anyMatch(RecordIterable::hasMore) || !nitriteIdSet.containsAll(originalNitriteIdSet);
         }
-        nextOffsets = calculateNextOffsets(cursorsByPartition, resultSet, compositeUnderlyingMap, compositeFindOptions);
+        Map<Integer, Integer> nextOffsets = calculateNextOffsets(cursorsByPartition, nitriteIdSet, documents, compositeFindOptions);
 
+        CompositeCursor cursor = new CompositeCursor(documents, nitriteIdSet, nextOffsets, hasMore, totalCount);
         if (logger.isDebugEnabled()) {
-            logger.debug("Returning {} from cursors by partition {} using {}", this, cursorsByPartition, compositeFindOptions);
+            logger.debug("Returning {} from cursors by partition {} using {}", cursor, cursorsByPartition, compositeFindOptions);
         }
+        return cursor;
     }
 
     @NotNull
-    private Set<NitriteId> extractIdsAndUpdateCompositeMapFromCursors(Map<Integer, Cursor> cursorsByPartition) {
-        Set<NitriteId> nitriteIdSet = new HashSet<>();
+    private static Map<NitriteId, Document> extractDocumentsFromCursors(List<CompositeCursor> compositeCursors) {
+        Map<NitriteId, Document> documents = new HashMap<>();
+        for (CompositeCursor compositeCursor : compositeCursors) {
+            for (NitriteId nitriteId : compositeCursor.idSet()) {
+                NitriteId newId = NitriteId.newId();
+                Document doc = compositeCursor.getDocuments().get(nitriteId);
+                doc.put("_id", newId.getIdValue());
+                documents.put(newId, doc);
+            }
+        }
+        return documents;
+    }
+
+    @NotNull
+    private static Map<NitriteId, Document> extractDocumentsFromCursors(Map<Integer, Cursor> cursorsByPartition) {
+        Map<NitriteId, Document> documents = new HashMap<>();
         for (Map.Entry<Integer, Cursor> cursorEntry : cursorsByPartition.entrySet()) {
             DocumentCursorInternals documentCursorInternals = new DocumentCursorInternals(cursorEntry.getValue());
             for (NitriteId nitriteId : documentCursorInternals.getResultSet()) {
@@ -102,29 +264,13 @@ public class CompositeCursor implements Cursor {
                 Document doc = documentCursorInternals.getUnderlyingMap().get(nitriteId);
                 doc.put("_id", newId.getIdValue());
                 doc.put("_pid", cursorEntry.getKey());
-                compositeUnderlyingMap.put(newId, doc);
-                nitriteIdSet.add(newId);
+                documents.put(newId, doc);
             }
         }
-        return nitriteIdSet;
+        return documents;
     }
 
-    @NotNull
-    private Set<NitriteId> extractIdsAndUpdateCompositeMapFromCursors(List<CompositeCursor> compositeCursors) {
-        Set<NitriteId> nitriteIdSet = new HashSet<>();
-        for (CompositeCursor compositeCursor : compositeCursors) {
-            for (NitriteId nitriteId : compositeCursor.idSet()) {
-                NitriteId newId = NitriteId.newId();
-                Document doc = compositeCursor.getCompositeUnderlyingMap().get(nitriteId);
-                doc.put("_id", newId.getIdValue());
-                compositeUnderlyingMap.put(newId, doc);
-                nitriteIdSet.add(newId);
-            }
-        }
-        return nitriteIdSet;
-    }
-
-    private Map<Integer, Integer> calculateNextOffsets(Map<Integer, Cursor> cursorsByPartition, Set<NitriteId> resultSet, Map<NitriteId, Document> compositeUnderlyingMap, CompositeFindOptions compositeFindOptions) {
+    private static Map<Integer, Integer> calculateNextOffsets(Map<Integer, Cursor> cursorsByPartition, Set<NitriteId> resultSet, Map<NitriteId, Document> compositeUnderlyingMap, CompositeFindOptions compositeFindOptions) {
         Map<Integer, Integer> originalOffsetsByPartition = getOriginalOffsetsByPartition(cursorsByPartition, compositeFindOptions);
         Map<Integer, Long> offsetDeltas = resultSet.stream().map((id) -> (Integer) compositeUnderlyingMap.get(id).get("_pid")).collect(Collectors.groupingBy(identity(), counting()));
         Map<Integer, Integer> newOffsetsByPartition = new HashMap<>(originalOffsetsByPartition);
@@ -134,7 +280,7 @@ public class CompositeCursor implements Cursor {
         return newOffsetsByPartition;
     }
 
-    private Map<Integer, Integer> calculateNextOffsets(List<CompositeCursor> compositeCursors, Set<NitriteId> resultSet, Map<NitriteId, Document> compositeUnderlyingMap, CompositeFindOptions compositeFindOptions) {
+    private static Map<Integer, Integer> calculateNextOffsets(List<CompositeCursor> compositeCursors, Set<NitriteId> resultSet, Map<NitriteId, Document> compositeUnderlyingMap, CompositeFindOptions compositeFindOptions) {
         Map<Integer, Integer> originalOffsetsByPartition = getOriginalOffsetsByPartition(compositeCursors, compositeFindOptions);
         Map<Integer, Long> offsetDeltas = resultSet.stream().map((id) -> (Integer) compositeUnderlyingMap.get(id).get("_pid")).collect(Collectors.groupingBy(identity(), counting()));
         Map<Integer, Integer> newOffsetsByPartition = new HashMap<>(originalOffsetsByPartition);
@@ -144,7 +290,7 @@ public class CompositeCursor implements Cursor {
         return newOffsetsByPartition;
     }
 
-    private Map<Integer, Integer> getOriginalOffsetsByPartition(Map<Integer, Cursor> cursorsByPartition, CompositeFindOptions compositeFindOptions) {
+    private static Map<Integer, Integer> getOriginalOffsetsByPartition(Map<Integer, Cursor> cursorsByPartition, CompositeFindOptions compositeFindOptions) {
         final Map<Integer, Integer> originalOffsetsByPartition;
         if (compositeFindOptions == null || compositeFindOptions.getOffsetsByPartition() == null) {
             originalOffsetsByPartition = new HashMap<>();
@@ -155,7 +301,7 @@ public class CompositeCursor implements Cursor {
         return originalOffsetsByPartition;
     }
 
-    private Map<Integer, Integer> getOriginalOffsetsByPartition(List<CompositeCursor> compositeCursors, CompositeFindOptions compositeFindOptions) {
+    private static Map<Integer, Integer> getOriginalOffsetsByPartition(List<CompositeCursor> compositeCursors, CompositeFindOptions compositeFindOptions) {
         final Map<Integer, Integer> originalOffsetsByPartition;
         if (compositeFindOptions == null || compositeFindOptions.getOffsetsByPartition() == null) {
             originalOffsetsByPartition = compositeCursors.get(0).getNextOffsets(); // TODO: check this
@@ -165,7 +311,8 @@ public class CompositeCursor implements Cursor {
         return originalOffsetsByPartition;
     }
 
-    private Set<NitriteId> sortIdSet(Collection<NitriteId> nitriteIdSet, CompositeFindOptions findOptions) {
+    private static Set<NitriteId> sortDocuments(Map<NitriteId, Document> documents, CompositeFindOptions findOptions) {
+        Collection<NitriteId> nitriteIdSet = documents.keySet();
         String sortField = findOptions.getField();
         Collator collator = findOptions.getCollator();
 
@@ -179,7 +326,7 @@ public class CompositeCursor implements Cursor {
         Set<NitriteId> nullValueIds = new HashSet<>();
 
         for (NitriteId id : nitriteIdSet) {
-            Document document = compositeUnderlyingMap.get(id);
+            Document document = documents.get(id);
             if (document == null) continue;
 
             Object value = getFieldValue(document, sortField);
@@ -223,10 +370,15 @@ public class CompositeCursor implements Cursor {
             }
         }
 
-        return limitIdSet(sortedValues, findOptions);
+        return limitDocuments(sortedValues, findOptions);
     }
 
-    private Set<NitriteId> limitIdSet(Collection<NitriteId> nitriteIdSet, CompositeFindOptions compositeFindOptions) {
+    // TODO refactor
+    private static Set<NitriteId> limitDocuments(Map<NitriteId, Document> documents, CompositeFindOptions compositeFindOptions) {
+        return limitDocuments(documents.keySet(), compositeFindOptions);
+    }
+
+    private static Set<NitriteId> limitDocuments(Collection<NitriteId> nitriteIdSet, CompositeFindOptions compositeFindOptions) {
         int offset = 0;
 //        int offset = compositeFindOptions.getOffset();
         int size = compositeFindOptions.getSize();
@@ -244,122 +396,11 @@ public class CompositeCursor implements Cursor {
         return resultSet;
     }
 
-    private <T> List<T> flattenList(Collection<List<T>> collection) {
+    private static <T> List<T> flattenList(Collection<List<T>> collection) {
         List<T> finalList = new ArrayList<>();
         for (List<T> list : collection) {
             finalList.addAll(list);
         }
         return finalList;
-    }
-
-    @Override
-    public RecordIterable<Document> project(Document projection) {
-        validateProjection(projection);
-//        return new ProjectedDocumentIterable(projection, findResult);
-        throw new UnsupportedOperationException("Projections not yet supported");
-    }
-
-    @Override
-    public RecordIterable<Document> join(Cursor cursor, Lookup lookup) {
-//        return new JoinedDocumentIterable(findResult, cursor, lookup);
-        throw new UnsupportedOperationException("Joins not yet supported");
-    }
-
-    @Override
-    public Set<NitriteId> idSet() {
-        return resultSet;
-    }
-
-    @Override
-    public Iterator<Document> iterator() {
-        return new CompositeCursor.DocumentCursorIterator();
-    }
-
-    @Override
-    public boolean hasMore() {
-        return hasMore;
-    }
-
-    @Override
-    public int size() {
-        return resultSet.size();
-    }
-
-    @Override
-    public int totalCount() {
-        return totalCount;
-    }
-
-    @Override
-    public Document firstOrDefault() {
-        return Iterables.firstOrDefault(this);
-    }
-
-    @Override
-    public List<Document> toList() {
-        return Iterables.toList(this);
-    }
-
-    private class DocumentCursorIterator implements Iterator<Document> {
-        private Iterator<NitriteId> iterator;
-
-        DocumentCursorIterator() {
-            iterator = resultSet.iterator();
-        }
-
-        @Override
-        public boolean hasNext() {
-            return iterator.hasNext();
-        }
-
-        @Override
-        public Document next() {
-            NitriteId next = iterator.next();
-            Document document = compositeUnderlyingMap.get(next);
-            if (document != null) {
-                return new Document(document);
-            }
-            return null;
-        }
-
-        @Override
-        public void remove() {
-            throw new InvalidOperationException(REMOVE_ON_DOCUMENT_ITERATOR_NOT_SUPPORTED);
-        }
-    }
-
-    private void validateProjection(Document projection) {
-        for (KeyValuePair kvp : projection) {
-            validateKeyValuePair(kvp);
-        }
-    }
-
-    private void validateKeyValuePair(KeyValuePair kvp) {
-        if (kvp.getValue() != null) {
-            if (!(kvp.getValue() instanceof Document)) {
-                throw new ValidationException(PROJECTION_WITH_NOT_NULL_VALUES);
-            } else {
-                validateProjection((Document) kvp.getValue());
-            }
-        }
-    }
-
-    public Map<Integer, Integer> getNextOffsets() {
-        return nextOffsets;
-    }
-
-    public Map<NitriteId, Document> getCompositeUnderlyingMap() {
-        return compositeUnderlyingMap;
-    }
-
-    @Override
-    public String toString() {
-        return "CompositeCursor{" +
-                "compositeUnderlyingMap=" + compositeUnderlyingMap +
-                ", nextOffsets=" + nextOffsets +
-                ", resultSet=" + resultSet +
-                ", hasMore=" + hasMore +
-                ", totalCount=" + totalCount +
-                '}';
     }
 }

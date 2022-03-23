@@ -1,5 +1,10 @@
 package io.techasylum.kafka.statestore.document.composite;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import io.techasylum.kafka.statestore.document.ReadOnlyCompositeDocumentStore;
 import io.techasylum.kafka.statestore.document.ReadOnlyDocumentStore;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
@@ -8,11 +13,8 @@ import org.apache.kafka.streams.state.internals.StateStoreProvider;
 import org.dizitart.no2.Cursor;
 import org.dizitart.no2.Document;
 import org.dizitart.no2.Filter;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A wrapper over the underlying {@link ReadOnlyCompositeDocumentStore}s found in a {@link
@@ -21,6 +23,8 @@ import java.util.Objects;
  * @param <K> key type
  */
 public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyCompositeDocumentStore<K> {
+
+    private static final Logger logger = LoggerFactory.getLogger(CompositeReadOnlyDocumentStore.class);
 
     private final StateStoreProvider storeProvider;
     private final QueryableStoreType<ReadOnlyDocumentStore<K>> storeType;
@@ -68,7 +72,7 @@ public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyCompositeDocum
                 throw new InvalidStateStoreException("State store is not available anymore and may have been migrated to another instance; please re-discover its location from the state metadata.");
             }
         }
-        return new CompositeCursor(cursors);
+        return CompositeCursor.of(cursors);
     }
 
     @Override
@@ -94,6 +98,8 @@ public class CompositeReadOnlyDocumentStore<K> implements ReadOnlyCompositeDocum
             }
 
         }
-        return new CompositeCursor(cursors, compositeFindOptions);
+        CompositeCursor compositeCursor = CompositeCursor.of(cursors, compositeFindOptions);
+        logger.debug("Returning composite cursor: {}", compositeCursor);
+        return compositeCursor;
     }
 }
