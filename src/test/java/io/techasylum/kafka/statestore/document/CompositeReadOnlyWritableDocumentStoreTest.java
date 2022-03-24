@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.techasylum.kafka.statestore.document.composite.CompositeCursor;
 import io.techasylum.kafka.statestore.document.composite.CompositeFindOptions;
+import io.techasylum.kafka.statestore.document.composite.CompositeIndexedDocumentStore;
 import io.techasylum.kafka.statestore.document.composite.CompositeReadOnlyDocumentStore;
 import io.techasylum.kafka.statestore.document.internals.InternalMockProcessorContext;
 import io.techasylum.kafka.statestore.document.internals.MockRecordCollector;
@@ -29,9 +30,14 @@ import org.apache.kafka.streams.state.StateSerdes;
 import org.apache.kafka.streams.state.internals.CompositeReadOnlyKeyValueStore;
 import org.dizitart.no2.Cursor;
 import org.dizitart.no2.Document;
+import org.dizitart.no2.IndexOptions;
+import org.dizitart.no2.IndexType;
+import org.dizitart.no2.exceptions.FilterException;
+import org.dizitart.no2.exceptions.IndexingException;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.filters.Filters;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.support.serializer.JsonSerde;
@@ -39,6 +45,8 @@ import org.springframework.kafka.support.serializer.JsonSerde;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.dizitart.no2.IndexOptions.indexOptions;
+import static org.dizitart.no2.IndexType.Fulltext;
 import static org.dizitart.no2.SortOrder.Ascending;
 import static org.dizitart.no2.SortOrder.Descending;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,6 +60,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     private NitriteDocumentStore<String> stubOneUnderlying;
     private NitriteDocumentStore<String> otherUnderlyingStore;
     private CompositeReadOnlyDocumentStore<String> theStore;
+    private CompositeIndexedDocumentStore theIndexedStore;
     private final Serde<Document> movieSerde = new JsonSerde<>(Document.class);
 
     private ObjectMapper objectMapper;
@@ -76,6 +85,11 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         theStore = new CompositeReadOnlyDocumentStore<>(
                 new WrappingStoreProvider(asList(stubProviderOne, stubProviderTwo), StoreQueryParameters.fromNameAndType(storeName, new QueryableDocumentStoreTypes.DocumentStoreType<>())),
                 new QueryableDocumentStoreTypes.DocumentStoreType<>(),
+                storeName
+        );
+        theIndexedStore = new CompositeIndexedDocumentStore(
+                new WrappingStoreProvider(asList(stubProviderOne, stubProviderTwo), StoreQueryParameters.fromNameAndType(storeName, new QueryableDocumentStoreTypes.IndexedDocumentStoreType())),
+                new QueryableDocumentStoreTypes.IndexedDocumentStoreType(),
                 storeName
         );
     }
@@ -331,6 +345,31 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).getNextOffsets(), 2));
         assertThat(movieQueryCursorPage3.toList()).map((d) -> d.get("code")).containsExactly(matrix4.code());
         assertThat(movieQueryCursorPage3.hasMore()).isFalse();
+    }
+
+    @Test
+    public void shouldFailTextFilterOnNonIndexedField() {
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
+
+        FilterException filterException = assertThrows(FilterException.class, () -> theStore.find(Filters.text("title", "The Matrix")));
+        assertThat(filterException).hasCauseExactlyInstanceOf(IndexingException.class);
+    }
+
+    @Test
+    public void shouldSupportTextFilterOnIndex() {
+        stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
+
+        theIndexedStore.createIndex("title", indexOptions(Fulltext, false));
+        Cursor movieQueryCursor = theStore.find(Filters.text("title", "The Matrix"));
+        assertThat(movieQueryCursor.totalCount()).isEqualTo(3);
+        assertThat(movieQueryCursor.size()).isEqualTo(3);
+        assertThat(movieQueryCursor.toList()).hasSize(3);
+        assertThat(movieQueryCursor.toList()).map((d) -> d.get("code")).containsExactlyInAnyOrder(matrix1.code(), matrix2.code(), matrix3.code());
     }
 
     /**

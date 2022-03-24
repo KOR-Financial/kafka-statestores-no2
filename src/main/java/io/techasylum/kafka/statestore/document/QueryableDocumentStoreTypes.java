@@ -3,6 +3,7 @@ package io.techasylum.kafka.statestore.document;
 import java.util.Collections;
 import java.util.Set;
 
+import io.techasylum.kafka.statestore.document.composite.CompositeIndexedDocumentStore;
 import io.techasylum.kafka.statestore.document.composite.CompositeReadOnlyDocumentStore;
 import io.techasylum.kafka.statestore.document.object.ReadOnlyObjectDocumentStore;
 import org.apache.kafka.streams.KafkaStreams;
@@ -87,16 +88,28 @@ public class QueryableDocumentStoreTypes {
 
     }
 
-    public static class DocumentObjectStoreType<K, V, F, O> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyObjectDocumentStore<K, V, F, O>> {
+    public static class CompositeIndexedDocumentStoreType extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<IndexedCompositeDocumentStore> {
 
-        DocumentObjectStoreType() {
-            super(Collections.singleton(ReadOnlyObjectDocumentStore.class));
+        CompositeIndexedDocumentStoreType() {
+            super(Collections.singleton(IndexedDocumentStore.class));
         }
 
         @Override
-        public ReadOnlyObjectDocumentStore<K, V, F, O> create(final StateStoreProvider storeProvider,
-                                                              final String storeName) {
-            throw new UnsupportedOperationException("Object stores not supported yet");
+        public IndexedCompositeDocumentStore create(final StateStoreProvider storeProvider, final String storeName) {
+            return new CompositeIndexedDocumentStore(storeProvider, new IndexedDocumentStoreType(), storeName);
+        }
+
+    }
+
+    static class IndexedDocumentStoreType extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<IndexedDocumentStore> {
+
+        IndexedDocumentStoreType() {
+            super(Collections.singleton(IndexedDocumentStore.class));
+        }
+
+        @Override
+        public IndexedDocumentStore create(final StateStoreProvider storeProvider, final String storeName) {
+            throw new UnsupportedOperationException("Cannot create individual stores through the QueryableStoreTypeMatcher");
         }
 
     }

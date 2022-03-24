@@ -24,6 +24,7 @@ import org.dizitart.no2.filters.Filters;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -281,6 +282,43 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     @Override
     public int getPartition() {
         return partition;
+    }
+
+// == Indexes =========================================================================================================
+
+    @Override
+    public void createIndex(String field, IndexOptions indexOptions) {
+        collection.createIndex(field, indexOptions);
+    }
+
+    @Override
+    public void rebuildIndex(String field, boolean async) {
+        collection.rebuildIndex(field, async);
+    }
+
+    @Override
+    public void dropIndex(String field) {
+        collection.dropIndex(field);
+    }
+
+    @Override
+    public void dropAllIndices() {
+        collection.dropAllIndices();
+    }
+
+    @Override
+    public boolean hasIndex(String field) {
+        return collection.hasIndex(field);
+    }
+
+    @Override
+    public boolean isIndexing(String field) {
+        return collection.isIndexing(field);
+    }
+
+    @Override
+    public Collection<Index> listIndices() {
+        return collection.listIndices();
     }
 
 // == Replay ==========================================================================================================

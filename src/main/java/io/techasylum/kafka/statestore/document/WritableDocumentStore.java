@@ -6,7 +6,7 @@ import org.dizitart.no2.Document;
 
 import java.util.List;
 
-public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocumentStore<Key> {
+public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocumentStore<Key>, IndexedDocumentStore {
 
     /**
      * Update the value associated with this key.
