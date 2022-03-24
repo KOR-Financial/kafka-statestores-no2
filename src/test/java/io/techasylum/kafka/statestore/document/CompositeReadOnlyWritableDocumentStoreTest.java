@@ -2,11 +2,10 @@ package io.techasylum.kafka.statestore.document;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,14 +29,12 @@ import org.apache.kafka.streams.state.StateSerdes;
 import org.apache.kafka.streams.state.internals.CompositeReadOnlyKeyValueStore;
 import org.dizitart.no2.Cursor;
 import org.dizitart.no2.Document;
-import org.dizitart.no2.IndexOptions;
-import org.dizitart.no2.IndexType;
+import org.dizitart.no2.Index;
 import org.dizitart.no2.exceptions.FilterException;
 import org.dizitart.no2.exceptions.IndexingException;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.filters.Filters;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.support.serializer.JsonSerde;
@@ -47,6 +44,7 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.dizitart.no2.IndexOptions.indexOptions;
 import static org.dizitart.no2.IndexType.Fulltext;
+import static org.dizitart.no2.IndexType.Unique;
 import static org.dizitart.no2.SortOrder.Ascending;
 import static org.dizitart.no2.SortOrder.Descending;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -355,6 +353,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
 
         FilterException filterException = assertThrows(FilterException.class, () -> theStore.find(Filters.text("title", "The Matrix")));
         assertThat(filterException).hasCauseExactlyInstanceOf(IndexingException.class);
+        assertThat(filterException.getCause()).hasMessage("NO2.5001: title is not indexed");
     }
 
     @Test
@@ -370,6 +369,101 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         assertThat(movieQueryCursor.size()).isEqualTo(3);
         assertThat(movieQueryCursor.toList()).hasSize(3);
         assertThat(movieQueryCursor.toList()).map((d) -> d.get("code")).containsExactlyInAnyOrder(matrix1.code(), matrix2.code(), matrix3.code());
+    }
+
+    @Test
+    public void shouldFailIndexingFieldTwice() {
+        theIndexedStore.createIndex("title", indexOptions(Fulltext));
+        IndexingException indexingException = assertThrows(IndexingException.class, () -> theIndexedStore.createIndex("title", indexOptions(Fulltext)));
+        assertThat(indexingException).hasMessage("NO2.5005: index already exists on title");
+    }
+
+    @Test
+    public void shouldFailDroppingIndexFieldTwice() {
+        theIndexedStore.createIndex("title", indexOptions(Fulltext));
+        theIndexedStore.dropIndex("title");
+        IndexingException indexingException = assertThrows(IndexingException.class, () -> theIndexedStore.dropIndex("title"));
+        assertThat(indexingException).hasMessage("NO2.5010: title is not indexed");
+    }
+
+    @Test
+    public void shouldFailDroppingIndexWhenIndexing() {
+        stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
+
+        assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(false);
+        theIndexedStore.createIndex("title", indexOptions(Fulltext, true));
+        IndexingException indexingException = assertThrows(IndexingException.class, () -> theIndexedStore.dropIndex("title"));
+        assertThat(indexingException).hasMessage("NO2.5008: can not drop index as indexing is running on title");
+    }
+
+    @Test
+    public void shouldIndexField() {
+        stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
+
+        assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(false);
+        theIndexedStore.createIndex("title", indexOptions(Fulltext, true));
+
+        Map<Integer, Boolean> indexingPartitions = theIndexedStore.isIndexing("title");
+        assertThat(indexingPartitions).hasSize(1);
+        assertThat(indexingPartitions.get(0)).isTrue();
+
+        Map<Integer, Collection<Index>> retrievedIndices = theIndexedStore.listIndices();
+        assertThat(retrievedIndices).hasSize(1);
+        assertThat(retrievedIndices.get(0)).hasSize(1);
+        assertThat(retrievedIndices.get(0)).containsOnlyOnce(new Index(Fulltext, "title", "NO_IDEA"));
+    }
+
+    @Test
+    public void shouldDropIndex() {
+        stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
+
+        theIndexedStore.createIndex("title", indexOptions(Fulltext, false));
+        assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(true);
+
+        theIndexedStore.dropIndex("title");
+        assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(false);
+
+        Map<Integer, Boolean> indexingPartitions = theIndexedStore.isIndexing("title");
+        assertThat(indexingPartitions).hasSize(1);
+        assertThat(indexingPartitions.get(0)).isFalse();
+
+        Map<Integer, Collection<Index>> retrievedIndices = theIndexedStore.listIndices();
+        assertThat(retrievedIndices).hasSize(1);
+        assertThat(retrievedIndices.get(0)).isEmpty();
+    }
+
+    @Test
+    public void shouldDropAllIndices() {
+        stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
+        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
+        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
+        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
+
+        theIndexedStore.createIndex("code", indexOptions(Unique, false));
+        theIndexedStore.createIndex("title", indexOptions(Fulltext, false));
+        assertThat(theIndexedStore.hasIndex("code")).extractingFromEntries(Map.Entry::getValue).containsOnly(true);
+        assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(true);
+
+        theIndexedStore.dropAllIndices();
+        assertThat(theIndexedStore.hasIndex("code")).extractingFromEntries(Map.Entry::getValue).containsOnly(false);
+        assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(false);
+
+        Map<Integer, Boolean> indexingPartitions = theIndexedStore.isIndexing("title");
+        assertThat(indexingPartitions).hasSize(1);
+        assertThat(indexingPartitions.get(0)).isFalse();
+
+        Map<Integer, Collection<Index>> retrievedIndices = theIndexedStore.listIndices();
+        assertThat(retrievedIndices).hasSize(1);
+        assertThat(retrievedIndices.get(0)).isEmpty();
     }
 
     /**
@@ -557,16 +651,9 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     }
 
     @NotNull
-    private File getNewStoreDir() throws IOException {
-        File storeDir = new File("test-store-dir/" + storeName);
-        Path pathToBeDeleted = storeDir.toPath();
-        if (storeDir.exists()) {
-            Files.walk(pathToBeDeleted)
-                    .sorted(Comparator.reverseOrder())
-                    .map(Path::toFile)
-                    .forEach(File::delete);
-        }
-        return storeDir;
+    private File getNewStoreDir() {
+        // Make sure to always have a new directory
+        return new File(String.format("%s/%s/test-store-dir/%s", System.getProperty("java.io.tmpdir"), UUID.randomUUID(), storeName));
     }
 
 }
