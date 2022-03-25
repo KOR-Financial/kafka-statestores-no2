@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +42,7 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     private final Serde<K> keySerde;
     private final Serde<Document> valueSerde;
     private final String keyFieldName;
+    private final Map<String, IndexOptions> indices;
 
     StateSerdes<K, Document> serdes;
 
@@ -49,11 +51,12 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
     InternalProcessorContext context;
 
-    public NitriteDocumentStore(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName) {
+    public NitriteDocumentStore(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName, Map<String, IndexOptions> indices) {
         this.name = name;
         this.keySerde = keySerde;
         this.valueSerde = valueSerde;
         this.keyFieldName = keyFieldName;
+        this.indices = indices;
     }
 
 // == Store Properties ================================================================================================
@@ -90,6 +93,7 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         openDB(context.appConfigs(), context.stateDir());
 
         context.register(root, new NitriteDocumentStore<K>.NitriteRestoreCallback(this));
+        indices.forEach(this::createIndex);
     }
 
     private void initStoreSerde(final StateStoreContext context) {
