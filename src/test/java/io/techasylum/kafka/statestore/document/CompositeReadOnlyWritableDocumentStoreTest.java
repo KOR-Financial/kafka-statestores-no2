@@ -184,7 +184,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         assertThat(movieQueryCursor1.size()).isEqualTo(2);
         assertThat(movieQueryCursor1.toList()).hasSize(2);
         assertThat(movieQueryCursor1.hasMore()).isTrue();
-        Map<Integer, Integer> nextOffsets = ((CompositeCursor) movieQueryCursor1).getNextOffsets();
+        Map<Integer, Integer> nextOffsets = ((CompositeCursor) movieQueryCursor1).nextOffsets();
         assertThat(nextOffsets).containsExactlyEntriesOf(Map.of(0, 2));
         Cursor movieQueryCursor2 = theStore.findWithOptions(CompositeFindOptions.limit(nextOffsets,2));
         assertThat(movieQueryCursor2.totalCount()).isEqualTo(3);
@@ -204,7 +204,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         assertThat(movieQueryCursor1.size()).isEqualTo(1);
         assertThat(movieQueryCursor1.toList()).hasSize(1);
         assertThat(movieQueryCursor1.hasMore()).isTrue();
-        Map<Integer, Integer> nextOffsets = ((CompositeCursor) movieQueryCursor1).getNextOffsets();
+        Map<Integer, Integer> nextOffsets = ((CompositeCursor) movieQueryCursor1).nextOffsets();
         assertThat(nextOffsets).containsExactlyEntriesOf(Map.of(0, 1));
         Cursor movieQueryCursor2 = theStore.findWithOptions(Filters.gt("year", 2000), CompositeFindOptions.limit(nextOffsets,1));
         assertThat(movieQueryCursor2.totalCount()).isEqualTo(2);
@@ -243,10 +243,10 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         Cursor movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(Map.of(0, 0, 1, 0), 2));
         assertThat(movieQueryCursorPage1.toList()).map((d) -> d.get("code")).containsExactly(speed.code(), matrix1.code());
         assertThat(movieQueryCursorPage1.hasMore()).isTrue();
-        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage1).getNextOffsets(), 2));
+        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
         assertThat(movieQueryCursorPage2.toList()).map((d) -> d.get("code")).containsExactlyInAnyOrder(matrix2.code(), matrix3.code());
         assertThat(movieQueryCursorPage2.hasMore()).isTrue();
-        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage2).getNextOffsets(), 2));
+        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
         assertThat(movieQueryCursorPage3.toList()).map((d) -> d.get("code")).containsExactly(matrix4.code());
         assertThat(movieQueryCursorPage3.hasMore()).isFalse();
     }
@@ -287,11 +287,11 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         assertThat(movieQueryCursorPage1.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code());
         assertThat(movieQueryCursorPage1.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).getNextOffsets(), 2));
+        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
         assertThat(movieQueryCursorPage2.toList()).map((d) -> d.get("code")).containsExactly(matrix2.code(), matrix3.code());
         assertThat(movieQueryCursorPage2.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).getNextOffsets(), 2));
+        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
         assertThat(movieQueryCursorPage3.toList()).map((d) -> d.get("code")).containsExactly(matrix4.code());
         assertThat(movieQueryCursorPage3.hasMore()).isFalse();
     }
@@ -336,11 +336,11 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         assertThat(movieQueryCursorPage1.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code());
         assertThat(movieQueryCursorPage1.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).getNextOffsets(), 2));
+        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
         assertThat(movieQueryCursorPage2.toList()).map((d) -> d.get("code")).containsExactly(matrix2.code(), matrix3.code());
         assertThat(movieQueryCursorPage2.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).getNextOffsets(), 2));
+        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
         assertThat(movieQueryCursorPage3.toList()).map((d) -> d.get("code")).containsExactly(matrix4.code());
         assertThat(movieQueryCursorPage3.hasMore()).isFalse();
     }

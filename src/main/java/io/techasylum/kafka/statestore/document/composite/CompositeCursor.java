@@ -45,10 +45,19 @@ public class CompositeCursor implements Cursor {
 
     private static final Logger logger = LoggerFactory.getLogger(CompositeCursor.class);
 
+    @JsonProperty
     private final Map<NitriteId, Document> documents;
+
+    @JsonProperty
     private final Map<Integer, Integer> nextOffsets;
+
+    @JsonProperty
     private final Set<NitriteId> resultSet;
+
+    @JsonProperty
     private final boolean hasMore;
+
+    @JsonProperty
     private final int totalCount;
 
     @JsonCreator
@@ -61,15 +70,15 @@ public class CompositeCursor implements Cursor {
         this.totalCount = totalCount;
     }
 
-    public Map<NitriteId, Document> getDocuments() {
+    public Map<NitriteId, Document> documents() {
         return Collections.unmodifiableMap(documents);
     }
 
-    public Map<Integer, Integer> getNextOffsets() {
+    public Map<Integer, Integer> nextOffsets() {
         return Collections.unmodifiableMap(nextOffsets);
     }
 
-    public Set<NitriteId> getResultSet() {
+    public Set<NitriteId> resultSet() {
         return Collections.unmodifiableSet(resultSet);
     }
 
@@ -246,7 +255,7 @@ public class CompositeCursor implements Cursor {
         for (CompositeCursor compositeCursor : compositeCursors) {
             for (NitriteId nitriteId : compositeCursor.idSet()) {
                 NitriteId newId = NitriteId.newId();
-                Document doc = compositeCursor.getDocuments().get(nitriteId);
+                Document doc = compositeCursor.documents().get(nitriteId);
                 doc.put("_id", newId.getIdValue());
                 documents.put(newId, doc);
             }
@@ -304,7 +313,7 @@ public class CompositeCursor implements Cursor {
     private static Map<Integer, Integer> getOriginalOffsetsByPartition(List<CompositeCursor> compositeCursors, CompositeFindOptions compositeFindOptions) {
         final Map<Integer, Integer> originalOffsetsByPartition;
         if (compositeFindOptions == null || compositeFindOptions.getOffsetsByPartition() == null) {
-            originalOffsetsByPartition = compositeCursors.get(0).getNextOffsets(); // TODO: check this
+            originalOffsetsByPartition = compositeCursors.get(0).nextOffsets(); // TODO: check this
         } else {
             originalOffsetsByPartition = compositeFindOptions.getOffsetsByPartition();
         }
