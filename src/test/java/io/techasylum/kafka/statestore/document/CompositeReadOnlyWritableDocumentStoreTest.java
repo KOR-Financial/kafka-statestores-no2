@@ -416,7 +416,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         Map<Integer, Collection<Index>> retrievedIndices = theIndexedStore.listIndices();
         assertThat(retrievedIndices).hasSize(1);
         assertThat(retrievedIndices.get(0)).hasSize(1);
-        assertThat(retrievedIndices.get(0)).containsOnlyOnce(new Index(Fulltext, "title", "NO_IDEA"));
+        assertThat(retrievedIndices.get(0)).containsOnlyOnce(new Index(Fulltext, "title", "my-store"));
     }
 
     @Test
