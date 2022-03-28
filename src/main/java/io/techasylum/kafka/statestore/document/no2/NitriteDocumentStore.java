@@ -1,10 +1,20 @@
 package io.techasylum.kafka.statestore.document.no2;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
 import io.techasylum.kafka.statestore.document.WritableDocumentStore;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.utils.Bytes;
-import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.errors.ProcessorStateException;
@@ -17,18 +27,19 @@ import org.apache.kafka.streams.processor.internals.ProcessorContextUtils;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.processor.internals.SerdeGetter;
 import org.apache.kafka.streams.state.StateSerdes;
-import org.dizitart.no2.*;
+import org.dizitart.no2.Cursor;
+import org.dizitart.no2.Document;
+import org.dizitart.no2.Filter;
+import org.dizitart.no2.FindOptions;
+import org.dizitart.no2.Index;
+import org.dizitart.no2.IndexOptions;
+import org.dizitart.no2.Nitrite;
+import org.dizitart.no2.NitriteBuilder;
+import org.dizitart.no2.NitriteCollection;
 import org.dizitart.no2.exceptions.NitriteException;
 import org.dizitart.no2.filters.Filters;
 import org.slf4j.Logger;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.toList;
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareKeySerde;
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareValueSerde;
 import static org.apache.kafka.streams.processor.internals.ProcessorContextUtils.asInternalProcessorContext;
@@ -45,6 +56,7 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     private final Serde<Document> valueSerde;
     private final String keyFieldName;
     private final Map<String, IndexOptions> indices;
+    private final List<NitriteCustomizer> customizers;
 
     StateSerdes<K, Document> serdes;
 
@@ -53,12 +65,13 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
     InternalProcessorContext context;
 
-    public NitriteDocumentStore(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName, Map<String, IndexOptions> indices) {
+    public NitriteDocumentStore(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName, Map<String, IndexOptions> indices, List<NitriteCustomizer> customizers) {
         this.name = name;
         this.keySerde = keySerde;
         this.valueSerde = valueSerde;
         this.keyFieldName = keyFieldName;
         this.indices = indices;
+        this.customizers = customizers;
     }
 
 // == Store Properties ================================================================================================
@@ -75,7 +88,7 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
     @Override
     public boolean isOpen() {
-        return !this.db.isClosed();
+        return !(this.db == null || this.db.isClosed());
     }
 
 // == Store Level Administration ======================================================================================
@@ -92,7 +105,8 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         partition = context.taskId().partition();
 
         initStoreSerde(context);
-        openDB(context.appConfigs(), context.stateDir());
+
+        openDB(context.stateDir());
 
         context.register(root, new NitriteDocumentStore<K>.NitriteRestoreCallback(this));
 
@@ -123,14 +137,15 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
     @Override
     public void flush() {
-        if (this.db == null) return;
+        if (!isOpen()) return;
         this.db.commit();
     }
 
     @Override
     public void close() {
-        if (this.db == null) return;
+        if (!isOpen()) return;
         this.db.close();
+        this.db = null;
     }
 
     private void validateStoreOpen() {
@@ -139,25 +154,21 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         }
     }
 
-    void openDB(final Map<String, Object> configs, final File stateDir) {
+    void openDB(final File stateDir) {
         File dbDir = new File(stateDir, name);
-
-        NitriteBuilder builder = Nitrite.builder()
-                .filePath(dbDir);
-
-        final Class<NitriteConfigSetter> configSetterClass =
-                (Class<NitriteConfigSetter>) configs.get(NitriteConfig.NITRITE_CONFIG_SETTER_CLASS_CONFIG);
-        if (configSetterClass != null) {
-            NitriteConfigSetter configSetter = Utils.newInstance(configSetterClass);
-            configSetter.setConfig(name, builder, configs);
-        }
 
         try {
             Files.createDirectories(dbDir.getParentFile().toPath());
-//            Files.createDirectories(dbDir.getAbsoluteFile().toPath());
         } catch (final IOException fatal) {
             throw new ProcessorStateException(fatal);
         }
+
+        NitriteBuilder builder = Nitrite.builder();
+        for (NitriteCustomizer customizer : customizers) {
+            builder = customizer.customize(builder);
+        }
+
+        builder = builder.filePath(dbDir);
 
         try {
             this.db = builder.openOrCreate();

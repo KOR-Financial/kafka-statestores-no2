@@ -1,6 +1,8 @@
 package io.techasylum.kafka.statestore.document.no2;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.serialization.Serde;
@@ -18,6 +20,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     private Map<String, String> logConfig = new HashMap<>();
     private Map<String, IndexOptions> indices = new HashMap<>();
+    private final List<NitriteCustomizer> customizers = new ArrayList<>();
 
     public NitriteDocumentStoreBuilder(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName) {
         this.name = name;
@@ -117,9 +120,20 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
         return this;
     }
 
+    /**
+     * Adds a customizer to customize the Nitrite document store.
+     *
+     * @param customizer the customizer
+     * @return the Nitrite document store builder
+     */
+    public NitriteDocumentStoreBuilder<K> withCustomizer(NitriteCustomizer customizer) {
+        customizers.add(customizer);
+        return this;
+    }
+
     @Override
     public NitriteDocumentStore<K> build() {
-        return new NitriteDocumentStore(this.name, this.keySerde, this.valueSerde, this.keyFieldName, indices);
+        return new NitriteDocumentStore(this.name, this.keySerde, this.valueSerde, this.keyFieldName, indices, customizers);
     }
 
     @Override

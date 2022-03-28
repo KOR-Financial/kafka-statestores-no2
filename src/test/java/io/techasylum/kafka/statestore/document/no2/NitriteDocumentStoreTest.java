@@ -17,6 +17,7 @@ import java.io.File;
 import java.util.Map;
 import java.util.UUID;
 
+import static java.util.Collections.emptyList;
 import static org.dizitart.no2.IndexOptions.indexOptions;
 import static org.dizitart.no2.IndexType.Fulltext;
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,7 +26,7 @@ class NitriteDocumentStoreTest {
 
     @Test
     void shouldInitCorrectly() {
-        NitriteDocumentStore store = new NitriteDocumentStore("name", Serdes.String(), new JsonSerde<Document>(), "testField", Map.of("testField", indexOptions(Fulltext)));
+        NitriteDocumentStore store = new NitriteDocumentStore("name", Serdes.String(), new JsonSerde<Document>(), "testField", Map.of("testField", indexOptions(Fulltext)), emptyList());
         String dir = String.format("%s/NitriteDocumentStoreTest/%s",
                 System.getProperty("java.io.tmpdir"), UUID.randomUUID());
         InternalProcessorContext ctx = new InternalMockProcessorContext(new File(dir), new StreamsConfig(Map.of("application.id", "test", "bootstrap.servers", "mock://mock.com")));
@@ -34,7 +35,7 @@ class NitriteDocumentStoreTest {
 
     @Test
     void shouldNotCreateIndicesThatAlreadyExist() {
-        NitriteDocumentStore store = new NitriteDocumentStore("name", Serdes.String(), new JsonSerde<Document>(), "testField", Map.of("testField", indexOptions(Fulltext)));
+        NitriteDocumentStore store = new NitriteDocumentStore("name", Serdes.String(), new JsonSerde<Document>(), "testField", Map.of("testField", indexOptions(Fulltext)), emptyList());
         String dir = String.format("%s/NitriteDocumentStoreTest/%s",
                 System.getProperty("java.io.tmpdir"), UUID.randomUUID());
         InternalProcessorContext ctx = new InternalMockProcessorContext(new File(dir), new StreamsConfig(Map.of("application.id", "test", "bootstrap.servers", "mock://mock.com")));
