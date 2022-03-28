@@ -20,22 +20,24 @@ import org.apache.kafka.streams.state.StateSerdes;
 import org.dizitart.no2.*;
 import org.dizitart.no2.exceptions.NitriteException;
 import org.dizitart.no2.filters.Filters;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareKeySerde;
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareValueSerde;
 import static org.apache.kafka.streams.processor.internals.ProcessorContextUtils.asInternalProcessorContext;
 import static org.dizitart.no2.UpdateOptions.updateOptions;
+import static org.slf4j.LoggerFactory.getLogger;
 
 public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
+
+    private static final Logger logger = getLogger(NitriteDocumentStore.class);
 
     private int partition;
     private final String name;
@@ -93,7 +95,18 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         openDB(context.appConfigs(), context.stateDir());
 
         context.register(root, new NitriteDocumentStore<K>.NitriteRestoreCallback(this));
-        indices.forEach(this::createIndex);
+
+        List<String> existingIndices = collection.listIndices().stream().map(Index::getField).toList();
+        Set<String> definedIndices = new HashSet<>(indices.keySet());
+
+        ArrayList<String> existingIndicesClone = new ArrayList<>(existingIndices);
+        existingIndicesClone.removeAll(definedIndices);
+        logger.warn("Indices exist that have not been defined in the code: {}", existingIndicesClone);
+        existingIndices.forEach(definedIndices::remove);
+
+        this.indices.entrySet().stream()
+                .filter((entry) -> definedIndices.contains(entry.getKey()))
+                .forEach((entry) -> createIndex(entry.getKey(), entry.getValue()));
     }
 
     private void initStoreSerde(final StateStoreContext context) {
