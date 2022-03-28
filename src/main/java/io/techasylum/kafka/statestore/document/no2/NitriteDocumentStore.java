@@ -148,7 +148,7 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
         try {
             this.db = builder.openOrCreate();
-            this.collection = this.db.getCollection("NO_IDEA");
+            this.collection = this.db.getCollection(name);
         } catch (NitriteException ne) {
             throw new ProcessorStateException("Error opening store " + name + " at location " + dbDir, ne);
         }

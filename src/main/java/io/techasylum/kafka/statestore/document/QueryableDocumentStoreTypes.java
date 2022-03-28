@@ -33,13 +33,22 @@ public class QueryableDocumentStoreTypes {
     }
 
     /**
-     * A {@link QueryableStoreType} that accepts {@link ReadOnlyObjectDocumentStore}.
+     * A {@link QueryableStoreType} that accepts {@link ReadOnlyDocumentStore}.
      *
      * @param <K> key type of the store
      * @return {@link CompositeDocumentStoreType}
      */
     public static <K> QueryableStoreType<ReadOnlyCompositeDocumentStore<K>> documentStore() {
         return new CompositeDocumentStoreType<>();
+    }
+
+    /**
+     * A {@link QueryableStoreType} that accepts {@link IndexedDocumentStore}.
+     *
+     * @return {@link CompositeIndexedDocumentStoreType}
+     */
+    public static QueryableStoreType<IndexedCompositeDocumentStore> indexedDocumentStore() {
+        return new CompositeIndexedDocumentStoreType();
     }
 
     private static abstract class QueryableStoreTypeMatcher<T> implements QueryableStoreType<T> {
@@ -101,7 +110,7 @@ public class QueryableDocumentStoreTypes {
 
     }
 
-    static class IndexedDocumentStoreType extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<IndexedDocumentStore> {
+    public static class IndexedDocumentStoreType extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<IndexedDocumentStore> {
 
         IndexedDocumentStoreType() {
             super(Collections.singleton(IndexedDocumentStore.class));
