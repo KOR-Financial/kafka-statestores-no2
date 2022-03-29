@@ -387,19 +387,6 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     }
 
     @Test
-    public void shouldFailDroppingIndexWhenIndexing() {
-        stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
-        stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
-        stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
-        stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
-
-        assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(false);
-        theIndexedStore.createIndex("title", indexOptions(Fulltext, true));
-        IndexingException indexingException = assertThrows(IndexingException.class, () -> theIndexedStore.dropIndex("title"));
-        assertThat(indexingException).hasMessage("NO2.5008: can not drop index as indexing is running on title");
-    }
-
-    @Test
     public void shouldIndexField() {
         stubOneUnderlying.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));

@@ -284,7 +284,11 @@ public class CompositeCursor implements Cursor {
         Map<Integer, Long> offsetDeltas = resultSet.stream().map((id) -> (Integer) compositeUnderlyingMap.get(id).get("_pid")).collect(Collectors.groupingBy(identity(), counting()));
         Map<Integer, Integer> newOffsetsByPartition = new HashMap<>(originalOffsetsByPartition);
         for (Integer key : offsetDeltas.keySet()) {
-            newOffsetsByPartition.put(key, originalOffsetsByPartition.get(key) + offsetDeltas.get(key).intValue());
+            Integer originalOffset = originalOffsetsByPartition.get(key);
+            if (originalOffset == null) {
+                originalOffset = 0;
+            }
+            newOffsetsByPartition.put(key, originalOffset + offsetDeltas.get(key).intValue());
         }
         return newOffsetsByPartition;
     }
@@ -294,7 +298,11 @@ public class CompositeCursor implements Cursor {
         Map<Integer, Long> offsetDeltas = resultSet.stream().map((id) -> (Integer) compositeUnderlyingMap.get(id).get("_pid")).collect(Collectors.groupingBy(identity(), counting()));
         Map<Integer, Integer> newOffsetsByPartition = new HashMap<>(originalOffsetsByPartition);
         for (Integer key : offsetDeltas.keySet()) {
-            newOffsetsByPartition.put(key, originalOffsetsByPartition.get(key) + offsetDeltas.get(key).intValue());
+            Integer originalOffset = originalOffsetsByPartition.get(key);
+            if (originalOffset == null) {
+                originalOffset = 0;
+            }
+            newOffsetsByPartition.put(key, originalOffset + offsetDeltas.get(key).intValue());
         }
         return newOffsetsByPartition;
     }
