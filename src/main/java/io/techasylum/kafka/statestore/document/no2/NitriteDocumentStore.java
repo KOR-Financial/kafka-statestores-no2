@@ -58,10 +58,9 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     private final Map<String, IndexOptions> indices;
     private final List<NitriteCustomizer> customizers;
 
-    StateSerdes<K, Document> serdes;
-
     private Nitrite db;
     private NitriteCollection collection;
+    private StateSerdes<K, Document> serdes;
 
     InternalProcessorContext context;
 
@@ -93,7 +92,6 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
 // == Store Level Administration ======================================================================================
 
-
     @Override
     public void init(ProcessorContext context, StateStore root) {
         throw new NotImplementedException("deprecated.");
@@ -108,8 +106,6 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
         openDB(context.stateDir());
 
-        context.register(root, new NitriteDocumentStore<K>.NitriteRestoreCallback(this));
-
         List<String> existingIndices = collection.listIndices().stream().map(Index::getField).toList();
         Set<String> definedIndices = new HashSet<>(indices.keySet());
 
@@ -121,6 +117,8 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         this.indices.entrySet().stream()
                 .filter((entry) -> definedIndices.contains(entry.getKey()))
                 .forEach((entry) -> createIndex(entry.getKey(), entry.getValue()));
+
+        context.register(root, new NitriteRestoreCallback<>(this));
     }
 
     private void initStoreSerde(final StateStoreContext context) {
@@ -351,19 +349,19 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
 // == Replay ==========================================================================================================
 
-    public class NitriteRestoreCallback implements StateRestoreCallback {
+    private static class NitriteRestoreCallback<K> implements StateRestoreCallback {
+
         private final NitriteDocumentStore<K> store;
 
-        public NitriteRestoreCallback(NitriteDocumentStore<K> store) {
+        private NitriteRestoreCallback(NitriteDocumentStore<K> store) {
             this.store = store;
         }
 
         @Override
         public void restore(byte[] key, byte[] value) {
-            K k = NitriteDocumentStore.this.serdes.keyFrom(key);
-            Document v = NitriteDocumentStore.this.serdes.valueFrom(value);
-
-            this.store.store(k, v);
+            K k = store.serdes.keyFrom(key);
+            Document v = store.serdes.valueFrom(value);
+            store.store(k, v);
         }
     }
 }
