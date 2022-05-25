@@ -1,16 +1,5 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
 import io.techasylum.kafka.statestore.document.WritableDocumentStore;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.kafka.common.serialization.Serde;
@@ -27,18 +16,15 @@ import org.apache.kafka.streams.processor.internals.ProcessorContextUtils;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.processor.internals.SerdeGetter;
 import org.apache.kafka.streams.state.StateSerdes;
-import org.dizitart.no2.Cursor;
-import org.dizitart.no2.Document;
-import org.dizitart.no2.Filter;
-import org.dizitart.no2.FindOptions;
-import org.dizitart.no2.Index;
-import org.dizitart.no2.IndexOptions;
-import org.dizitart.no2.Nitrite;
-import org.dizitart.no2.NitriteBuilder;
-import org.dizitart.no2.NitriteCollection;
+import org.dizitart.no2.*;
 import org.dizitart.no2.exceptions.NitriteException;
 import org.dizitart.no2.filters.Filters;
 import org.slf4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.*;
 
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareKeySerde;
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareValueSerde;

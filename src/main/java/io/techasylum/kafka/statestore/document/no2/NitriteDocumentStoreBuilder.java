@@ -1,15 +1,12 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.dizitart.no2.Document;
 import org.dizitart.no2.IndexOptions;
 import org.dizitart.no2.IndexType;
+
+import java.util.*;
 
 public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocumentStore<K>> {
 
@@ -19,8 +16,10 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
     private final String keyFieldName;
 
     private Map<String, String> logConfig = new HashMap<>();
-    private Map<String, IndexOptions> indices = new HashMap<>();
+    private final Map<String, IndexOptions> indices = new HashMap<>();
     private final List<NitriteCustomizer> customizers = new ArrayList<>();
+
+    boolean enableLogging = true;
 
     public NitriteDocumentStoreBuilder(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName) {
         this.name = name;
@@ -41,13 +40,17 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     @Override
     public NitriteDocumentStoreBuilder<K> withLoggingEnabled(Map<String, String> config) {
+        Objects.requireNonNull(config, "config can't be null");
+        enableLogging = true;
         this.logConfig = config;
         return this;
     }
 
     @Override
     public NitriteDocumentStoreBuilder<K> withLoggingDisabled() {
-        throw new UnsupportedOperationException("logging cannot be turned off for nitrite stores");
+        enableLogging = false;
+        logConfig.clear();
+        return this;
     }
 
     /**
@@ -143,7 +146,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     @Override
     public boolean loggingEnabled() {
-        return true;
+        return enableLogging;
     }
 
     @Override

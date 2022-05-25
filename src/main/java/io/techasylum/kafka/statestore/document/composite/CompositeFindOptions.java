@@ -1,13 +1,13 @@
 package io.techasylum.kafka.statestore.document.composite;
 
-import java.text.Collator;
-import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.NullOrder;
 import org.dizitart.no2.SortOrder;
+
+import java.text.Collator;
+import java.util.Map;
 
 public class CompositeFindOptions extends FindOptions {
 

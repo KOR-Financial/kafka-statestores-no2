@@ -2,7 +2,6 @@ package io.techasylum.kafka.statestore.document;
 
 import io.techasylum.kafka.statestore.document.no2.NitriteDocumentStoreBuilder;
 import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.streams.state.StoreBuilder;
 import org.dizitart.no2.Document;
 
 public final class DocumentStores {

@@ -1,30 +1,8 @@
 package io.techasylum.kafka.statestore.document.composite;
 
-import java.text.Collator;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.dizitart.no2.Cursor;
-import org.dizitart.no2.Document;
-import org.dizitart.no2.KeyValuePair;
-import org.dizitart.no2.Lookup;
-import org.dizitart.no2.NitriteId;
-import org.dizitart.no2.NullOrder;
-import org.dizitart.no2.RecordIterable;
-import org.dizitart.no2.SortOrder;
+import org.dizitart.no2.*;
 import org.dizitart.no2.exceptions.InvalidOperationException;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.internals.DocumentCursorInternals;
@@ -33,11 +11,13 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.Collator;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.counting;
-import static org.dizitart.no2.exceptions.ErrorMessage.PROJECTION_WITH_NOT_NULL_VALUES;
-import static org.dizitart.no2.exceptions.ErrorMessage.REMOVE_ON_DOCUMENT_ITERATOR_NOT_SUPPORTED;
-import static org.dizitart.no2.exceptions.ErrorMessage.UNABLE_TO_SORT_ON_ARRAY;
+import static org.dizitart.no2.exceptions.ErrorMessage.*;
 import static org.dizitart.no2.util.DocumentUtils.getFieldValue;
 import static org.dizitart.no2.util.StringUtils.isNullOrEmpty;
 

@@ -6,7 +6,6 @@ import org.dizitart.no2.IndexType;
 import org.dizitart.no2.exceptions.IndexingException;
 
 import java.util.Collection;
-import java.util.Map;
 
 public interface IndexedDocumentStore {
 

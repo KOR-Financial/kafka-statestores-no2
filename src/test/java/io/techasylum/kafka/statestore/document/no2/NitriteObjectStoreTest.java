@@ -1,7 +1,7 @@
 package io.techasylum.kafka.statestore.document.no2;
 
-import io.techasylum.kafka.statestore.document.WritableDocumentStore;
 import io.techasylum.kafka.statestore.document.DocumentStores;
+import io.techasylum.kafka.statestore.document.WritableDocumentStore;
 import io.techasylum.kafka.statestore.document.no2.movies.*;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
