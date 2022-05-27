@@ -136,7 +136,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     @Override
     public NitriteDocumentStore<K> build() {
-        return new NitriteDocumentStore(this.name, this.keySerde, this.valueSerde, this.keyFieldName, indices, customizers);
+        return new NitriteDocumentStore(this.name, this.keySerde, this.valueSerde, this.keyFieldName, indices, customizers, enableLogging);
     }
 
     @Override

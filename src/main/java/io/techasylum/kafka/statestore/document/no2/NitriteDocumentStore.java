@@ -44,19 +44,22 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     private final Map<String, IndexOptions> indices;
     private final List<NitriteCustomizer> customizers;
 
+    private boolean enableLogging;
+
     private Nitrite db;
     private NitriteCollection collection;
     private StateSerdes<K, Document> serdes;
 
     InternalProcessorContext context;
 
-    public NitriteDocumentStore(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName, Map<String, IndexOptions> indices, List<NitriteCustomizer> customizers) {
+    public NitriteDocumentStore(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName, Map<String, IndexOptions> indices, List<NitriteCustomizer> customizers, boolean enableLogging) {
         this.name = name;
         this.keySerde = keySerde;
         this.valueSerde = valueSerde;
         this.keyFieldName = keyFieldName;
         this.indices = indices;
         this.customizers = customizers;
+        this.enableLogging = enableLogging;
     }
 
 // == Store Properties ================================================================================================
@@ -212,7 +215,9 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         validateStoreOpen();
 
         this.store(key, value);
-        this.log(key, value);
+        if (enableLogging) {
+            this.log(key, value);
+        }
     }
 
     @Override
@@ -222,7 +227,7 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         validateStoreOpen();
 
         final Document previous = this.storeIfAbsent(key, value);
-        if (previous == null) {
+        if (enableLogging && previous == null) {
             // then it was absent
             log(key, value);
         }
@@ -235,8 +240,10 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         validateStoreOpen();
 
         this.storeAll(entries);
-        for (KeyValue<K, Document> entry : entries) {
-            this.log(entry.key, entry.value);
+        if (enableLogging) {
+            for (KeyValue<K, Document> entry : entries) {
+                this.log(entry.key, entry.value);
+            }
         }
     }
 
@@ -246,7 +253,9 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         validateStoreOpen();
 
         final Document oldValue = this.remove(key);
-        log(key, null);
+        if (enableLogging) {
+            log(key, null);
+        }
         return oldValue;
     }
 
