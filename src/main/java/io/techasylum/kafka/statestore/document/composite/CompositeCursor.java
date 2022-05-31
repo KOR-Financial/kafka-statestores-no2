@@ -235,7 +235,7 @@ public class CompositeCursor implements Cursor {
         for (CompositeCursor compositeCursor : compositeCursors) {
             for (NitriteId nitriteId : compositeCursor.idSet()) {
                 NitriteId newId = NitriteId.newId();
-                Document doc = compositeCursor.documents().get(nitriteId);
+                Document doc = new Document(compositeCursor.documents().get(nitriteId));
                 doc.put("_id", newId.getIdValue());
                 documents.put(newId, doc);
             }
@@ -250,7 +250,7 @@ public class CompositeCursor implements Cursor {
             DocumentCursorInternals documentCursorInternals = new DocumentCursorInternals(cursorEntry.getValue());
             for (NitriteId nitriteId : documentCursorInternals.getResultSet()) {
                 NitriteId newId = NitriteId.newId();
-                Document doc = documentCursorInternals.getUnderlyingMap().get(nitriteId);
+                Document doc = new Document(documentCursorInternals.getUnderlyingMap().get(nitriteId));
                 doc.put("_id", newId.getIdValue());
                 doc.put("_pid", cursorEntry.getKey());
                 documents.put(newId, doc);
