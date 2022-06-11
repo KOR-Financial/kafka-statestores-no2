@@ -1,17 +1,21 @@
 package io.techasylum.kafka.statestore.document.composite;
 
+import java.text.Collator;
+import java.util.Map;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.dizitart.no2.FindOptions;
 import org.dizitart.no2.NullOrder;
 import org.dizitart.no2.SortOrder;
-
-import java.text.Collator;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CompositeFindOptions extends FindOptions {
 
-    private Map<Integer, Integer> offsetsByPartition;
+    private static final Logger logger = LoggerFactory.getLogger(CompositeFindOptions.class);
+
+    private Map<Integer, Integer> offsetsByPartition = Map.of();
 
     /**
      * Instantiates a new find options with pagination criteria.
@@ -163,11 +167,12 @@ public class CompositeFindOptions extends FindOptions {
     }
 
     public Integer getOffsetForPartition(int partition) {
-        if (offsetsByPartition != null) {
-            return offsetsByPartition.get(partition);
-        } else {
-            return getOffset();
+        Integer offset = offsetsByPartition.get(partition);
+        if (offset == null) {
+            logger.warn("No offset defined for partition {}. Falling back to offset 0.", partition);
+            offset = 0;
         }
+        return offset;
     }
 
     public Map<Integer, Integer> getOffsetsByPartition() {
@@ -183,6 +188,6 @@ public class CompositeFindOptions extends FindOptions {
     }
 
     public static CompositeFindOptions defaultOptions() {
-        return new CompositeFindOptions(Map.of(0, 0, 1, 0), 100);
+        return new CompositeFindOptions(Map.of(), 100);
     }
 }
