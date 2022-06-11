@@ -1,5 +1,6 @@
 package io.techasylum.kafka.statestore.document.no2;
 
+import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.dizitart.no2.Document;
@@ -12,7 +13,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     private final String name;
     private final Serde<K> keySerde;
-    private final Serde<Document> valueSerde;
+    private final DocumentSerde valueSerde;
     private final String keyFieldName;
 
     private Map<String, String> logConfig = new HashMap<>();
@@ -21,7 +22,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     boolean enableLogging = true;
 
-    public NitriteDocumentStoreBuilder(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName) {
+    public NitriteDocumentStoreBuilder(String name, Serde<K> keySerde, DocumentSerde valueSerde, String keyFieldName) {
         this.name = name;
         this.keySerde = keySerde;
         this.valueSerde = valueSerde;

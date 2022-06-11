@@ -12,6 +12,7 @@ import io.techasylum.kafka.statestore.document.internals.StateStoreProviderStub;
 import io.techasylum.kafka.statestore.document.internals.WrappingStoreProvider;
 import io.techasylum.kafka.statestore.document.no2.NitriteDocumentStore;
 import io.techasylum.kafka.statestore.document.no2.movies.Movie;
+import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StoreQueryParameters;
@@ -57,7 +58,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     private NitriteDocumentStore<String> otherUnderlyingStore;
     private CompositeReadOnlyDocumentStore<String> theStore;
     private CompositeIndexedDocumentStore theIndexedStore;
-    private final Serde<Document> movieSerde = new JsonSerde<>(Document.class);
+    private DocumentSerde movieSerde;
 
     private ObjectMapper objectMapper;
 
@@ -71,6 +72,8 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     public void before() throws IOException {
         objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        movieSerde = new DocumentSerde(objectMapper);
+
         final StateStoreProviderStub stubProviderOne = new StateStoreProviderStub(false);
         stubProviderTwo = new StateStoreProviderStub(false);
 

@@ -1,13 +1,29 @@
 package io.techasylum.kafka.statestore.document.no2;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Properties;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.techasylum.kafka.statestore.document.DocumentStores;
 import io.techasylum.kafka.statestore.document.WritableDocumentStore;
-import io.techasylum.kafka.statestore.document.no2.movies.*;
+import io.techasylum.kafka.statestore.document.no2.movies.DeleteMovieCommand;
+import io.techasylum.kafka.statestore.document.no2.movies.Movie;
+import io.techasylum.kafka.statestore.document.no2.movies.MovieCommandFeedback;
+import io.techasylum.kafka.statestore.document.no2.movies.MovieConverter;
+import io.techasylum.kafka.statestore.document.no2.movies.MovieEvent;
+import io.techasylum.kafka.statestore.document.no2.movies.MovieEventHandler;
+import io.techasylum.kafka.statestore.document.no2.movies.SetMovieCommand;
+import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.*;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.TestInputTopic;
+import org.apache.kafka.streams.TestOutputTopic;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.TopologyTestDriver;
 import org.dizitart.no2.Cursor;
-import org.dizitart.no2.Document;
 import org.dizitart.no2.filters.Filters;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,21 +31,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.util.FileSystemUtils;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Properties;
-
 import static org.dizitart.no2.filters.Filters.and;
 import static org.dizitart.no2.filters.Filters.gte;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NitriteObjectStoreTest {
     private TopologyTestDriver testDriver;
     private WritableDocumentStore<String> store;
 
-    private final Serde<Document> documentSerde = new JsonSerde<>(Document.class);
-    private final Serde<Movie> movieSerde = new JsonSerde<>(Movie.class);
-    private final Serde<MovieEvent> eventSerde = new JsonSerde<>(MovieEvent.class);
     private final MovieConverter movieConverter = new MovieConverter();
 
     private TestOutputTopic<String, MovieEvent> outputTopic;
@@ -40,11 +51,16 @@ class NitriteObjectStoreTest {
     public void setup() throws IOException {
         FileSystemUtils.deleteRecursively(Path.of("/tmp/kafka-streams/movieService"));
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.findAndRegisterModules();
+
+        Serde<MovieEvent> eventSerde = new JsonSerde<>(MovieEvent.class);
+
         Topology topology = new Topology()
                 .addSource("sourceProcessor", Serdes.String().deserializer(), eventSerde.deserializer(), "movie-events")
                 .addProcessor("commandHandler", MovieEventHandler::new, "sourceProcessor")
                 .addStateStore(
-                        DocumentStores.nitriteStore("movies", Serdes.String(), documentSerde, "code"),
+                        DocumentStores.nitriteStore("movies", Serdes.String(), new DocumentSerde(objectMapper), "code"),
                     "commandHandler")
                 .addSink("sinkProcessor", "movie-events", Serdes.String().serializer(), eventSerde.serializer(), "commandHandler");
 
@@ -61,7 +77,7 @@ class NitriteObjectStoreTest {
         outputTopic = testDriver.createOutputTopic("movie-events", Serdes.String().deserializer(), eventSerde.deserializer());
         inputTopic = testDriver.createInputTopic("movie-events", Serdes.String().serializer(), eventSerde.serializer());
 
-        stateTopic = testDriver.createOutputTopic("movieService-movies-changelog", Serdes.String().deserializer(), movieSerde.deserializer());
+        stateTopic = testDriver.createOutputTopic("movieService-movies-changelog", Serdes.String().deserializer(), new JsonSerde<>(Movie.class).deserializer());
     }
 
     @AfterEach

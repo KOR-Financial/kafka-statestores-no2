@@ -7,7 +7,6 @@ import org.dizitart.no2.exceptions.InvalidOperationException;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.internals.DocumentCursorInternals;
 import org.dizitart.no2.util.Iterables;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -229,7 +228,6 @@ public class CompositeCursor implements Cursor {
         return cursor;
     }
 
-    @NotNull
     private static Map<NitriteId, Document> extractDocumentsFromCursors(List<CompositeCursor> compositeCursors) {
         Map<NitriteId, Document> documents = new HashMap<>();
         for (CompositeCursor compositeCursor : compositeCursors) {
@@ -243,7 +241,6 @@ public class CompositeCursor implements Cursor {
         return documents;
     }
 
-    @NotNull
     private static Map<NitriteId, Document> extractDocumentsFromCursors(Map<Integer, Cursor> cursorsByPartition) {
         Map<NitriteId, Document> documents = new HashMap<>();
         for (Map.Entry<Integer, Cursor> cursorEntry : cursorsByPartition.entrySet()) {
