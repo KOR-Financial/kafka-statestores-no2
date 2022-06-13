@@ -92,7 +92,7 @@ class FilterTests {
 	@Test
 	void shouldDeserializeGreaterThanFilter() throws JsonProcessingException {
 		String json = "{\"type\":\"gt\",\"field\":\"tradeId\",\"comparable\":1}";
-		GreaterThanFilter filter = (GreaterThanFilter) mapper.readValue(json, Filter.class);
+		PatchedGreaterThanFilter filter = (PatchedGreaterThanFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);
 	}
@@ -100,7 +100,7 @@ class FilterTests {
 	@Test
 	void shouldDeserializeGreaterEqualFilter() throws JsonProcessingException {
 		String json = "{\"type\":\"gte\",\"field\":\"tradeId\",\"comparable\":1}";
-		GreaterEqualFilter filter = (GreaterEqualFilter) mapper.readValue(json, Filter.class);
+		PatchedGreaterEqualFilter filter = (PatchedGreaterEqualFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);
 	}
@@ -108,7 +108,7 @@ class FilterTests {
 	@Test
 	void shouldDeserializeLesserThanFilter() throws JsonProcessingException {
 		String json = "{\"type\":\"lt\",\"field\":\"tradeId\",\"comparable\":1}";
-		LesserThanFilter filter = (LesserThanFilter) mapper.readValue(json, Filter.class);
+		PatchedLesserThanFilter filter = (PatchedLesserThanFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);
 	}
@@ -116,7 +116,7 @@ class FilterTests {
 	@Test
 	void shouldDeserializeLesserEqualFilter() throws JsonProcessingException {
 		String json = "{\"type\":\"lte\",\"field\":\"tradeId\",\"comparable\":1}";
-		LesserEqualFilter filter = (LesserEqualFilter) mapper.readValue(json, Filter.class);
+		PatchedLesserEqualFilter filter = (PatchedLesserEqualFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);
 	}
