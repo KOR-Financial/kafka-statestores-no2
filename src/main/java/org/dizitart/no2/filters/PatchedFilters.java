@@ -20,7 +20,7 @@ public class PatchedFilters {
 
     /**
      * Creates a greater than filter which matches those documents where the value
-     * of the value is greater than (i.e. >) the specified value.
+     * of the value is greater than (i.e. &gt;) the specified value.
      *
      * [[app-listing]]
      * [source,java]
@@ -40,7 +40,7 @@ public class PatchedFilters {
 
     /**
      * Creates a greater equal filter which matches those documents where the value
-     * of the value is greater than or equals to (i.e. >=) the specified value.
+     * of the value is greater than or equals to (i.e. &gt;=) the specified value.
      *
      * [[app-listing]]
      * [source,java]
@@ -60,7 +60,7 @@ public class PatchedFilters {
 
     /**
      * Creates a lesser than filter which matches those documents where the value
-     * of the value is less than (i.e. <) the specified value.
+     * of the value is less than (i.e. &lt;) the specified value.
      *
      * [[app-listing]]
      * [source,java]
@@ -80,7 +80,7 @@ public class PatchedFilters {
 
     /**
      * Creates a lesser equal filter which matches those documents where the value
-     * of the value is lesser than or equals to (i.e. <=) the specified value.
+     * of the value is lesser than or equals to (i.e. &lt;=) the specified value.
      *
      * [[app-listing]]
      * [source,java]
