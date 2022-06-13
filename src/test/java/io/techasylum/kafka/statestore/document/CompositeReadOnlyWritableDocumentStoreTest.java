@@ -13,7 +13,6 @@ import io.techasylum.kafka.statestore.document.internals.WrappingStoreProvider;
 import io.techasylum.kafka.statestore.document.no2.NitriteDocumentStore;
 import io.techasylum.kafka.statestore.document.no2.movies.Movie;
 import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
-import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.processor.StateStoreContext;
@@ -28,10 +27,11 @@ import org.dizitart.no2.exceptions.FilterException;
 import org.dizitart.no2.exceptions.IndexingException;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.filters.Filters;
+import org.dizitart.no2.filters.Filters;
+import org.dizitart.no2.filters.PatchedFilters;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.kafka.support.serializer.JsonSerde;
 
 import java.io.File;
 import java.io.IOException;
@@ -167,7 +167,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
         stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        Cursor movieQueryCursor = theStore.find(Filters.gt("year", 2000));
+        Cursor movieQueryCursor = theStore.find(PatchedFilters.gt("year", 2000));
         assertThat(movieQueryCursor.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor.size()).isEqualTo(2);
         assertThat(movieQueryCursor.toList()).hasSize(2);
@@ -200,14 +200,14 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
         stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        Cursor movieQueryCursor1 = theStore.findWithOptions(Filters.gt("year", 2000), CompositeFindOptions.limit(Map.of(0, 0),1));
+        Cursor movieQueryCursor1 = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.limit(Map.of(0, 0),1));
         assertThat(movieQueryCursor1.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor1.size()).isEqualTo(1);
         assertThat(movieQueryCursor1.toList()).hasSize(1);
         assertThat(movieQueryCursor1.hasMore()).isTrue();
         Map<Integer, Integer> nextOffsets = ((CompositeCursor) movieQueryCursor1).nextOffsets();
         assertThat(nextOffsets).containsExactlyEntriesOf(Map.of(0, 1));
-        Cursor movieQueryCursor2 = theStore.findWithOptions(Filters.gt("year", 2000), CompositeFindOptions.limit(nextOffsets,1));
+        Cursor movieQueryCursor2 = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.limit(nextOffsets,1));
         assertThat(movieQueryCursor2.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor2.size()).isEqualTo(1);
         assertThat(movieQueryCursor2.toList()).hasSize(1);
@@ -225,7 +225,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         store.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
         store.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
 
-        Cursor movieQueryCursor = theStore.findWithOptions(Filters.gt("year", 2000), CompositeFindOptions.sort("year", Ascending));
+        Cursor movieQueryCursor = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.sort("year", Ascending));
         assertThat(movieQueryCursor.toList()).map((d) -> d.get("code")).containsExactlyInAnyOrder(matrix2.code(), matrix3.code());
     }
 

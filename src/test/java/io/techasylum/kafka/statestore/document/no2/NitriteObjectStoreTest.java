@@ -24,7 +24,7 @@ import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.dizitart.no2.Cursor;
-import org.dizitart.no2.filters.Filters;
+import org.dizitart.no2.filters.PatchedFilters;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,8 @@ import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.util.FileSystemUtils;
 
 import static org.dizitart.no2.filters.Filters.and;
-import static org.dizitart.no2.filters.Filters.gte;
+import static org.dizitart.no2.filters.Filters.regex;
+import static org.dizitart.no2.filters.PatchedFilters.gte;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -115,7 +116,7 @@ class NitriteObjectStoreTest {
     public void shouldFindMovieWithRegexFilter() {
         loadMovies();
 
-        Cursor movies = store.find(and(Filters.regex("title", ".*Matrix.*")));
+        Cursor movies = store.find(and(regex("title", ".*Matrix.*")));
         assertEquals(4, movies.totalCount());
     }
 
@@ -123,7 +124,7 @@ class NitriteObjectStoreTest {
     public void shouldFindMovieWithMultipleFilter() {
         loadMovies();
 
-        Cursor movies = store.find(and(Filters.regex("title", ".*Matrix.*"), gte("year", 2003)));
+        Cursor movies = store.find(and(regex("title", ".*Matrix.*"), PatchedFilters.gte("year", 2003)));
         assertEquals(3, movies.totalCount());
     }
 

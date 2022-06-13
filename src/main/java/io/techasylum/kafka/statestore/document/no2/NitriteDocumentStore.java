@@ -19,6 +19,7 @@ import org.apache.kafka.streams.state.StateSerdes;
 import org.dizitart.no2.*;
 import org.dizitart.no2.exceptions.NitriteException;
 import org.dizitart.no2.filters.Filters;
+import org.dizitart.no2.filters.Filters;
 import org.slf4j.Logger;
 
 import java.io.File;
