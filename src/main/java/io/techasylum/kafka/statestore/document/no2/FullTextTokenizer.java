@@ -7,13 +7,13 @@
 
 package io.techasylum.kafka.statestore.document.no2;
 
-import org.dizitart.no2.fulltext.BaseTextTokenizer;
-import org.dizitart.no2.fulltext.TextTokenizer;
-import org.dizitart.no2.fulltext.UniversalTextTokenizer;
-
 import java.util.HashSet;
 import java.util.Set;
 import java.util.StringTokenizer;
+
+import org.dizitart.no2.fulltext.BaseTextTokenizer;
+import org.dizitart.no2.fulltext.TextTokenizer;
+import org.dizitart.no2.fulltext.UniversalTextTokenizer;
 
 /**
  * A {@link TextTokenizer} implementation with support for various languages and

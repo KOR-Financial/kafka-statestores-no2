@@ -1,5 +1,12 @@
 package io.techasylum.kafka.statestore.document;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.techasylum.kafka.statestore.document.composite.CompositeCursor;
@@ -27,18 +34,10 @@ import org.dizitart.no2.exceptions.FilterException;
 import org.dizitart.no2.exceptions.IndexingException;
 import org.dizitart.no2.exceptions.ValidationException;
 import org.dizitart.no2.filters.Filters;
-import org.dizitart.no2.filters.Filters;
 import org.dizitart.no2.filters.PatchedFilters;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -48,7 +47,9 @@ import static org.dizitart.no2.IndexType.Fulltext;
 import static org.dizitart.no2.IndexType.Unique;
 import static org.dizitart.no2.SortOrder.Ascending;
 import static org.dizitart.no2.SortOrder.Descending;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CompositeReadOnlyWritableDocumentStoreTest {
 

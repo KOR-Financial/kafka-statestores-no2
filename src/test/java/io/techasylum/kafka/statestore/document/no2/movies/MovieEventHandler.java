@@ -1,14 +1,14 @@
 package io.techasylum.kafka.statestore.document.no2.movies;
 
+import java.util.Date;
+import java.util.Optional;
+
 import io.techasylum.kafka.statestore.document.WritableDocumentStore;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Date;
-import java.util.Optional;
 
 public class MovieEventHandler implements Processor<String, MovieEvent, String, MovieCommandFeedback> {
     private final Logger LOGGER = LoggerFactory.getLogger(MovieEventHandler.class);

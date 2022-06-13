@@ -1,11 +1,11 @@
 package org.dizitart.no2.internals;
 
+import java.lang.reflect.Field;
+import java.util.Set;
+
 import org.dizitart.no2.Document;
 import org.dizitart.no2.NitriteId;
 import org.dizitart.no2.store.NitriteMap;
-
-import java.lang.reflect.Field;
-import java.util.Set;
 
 public class DocumentCursorInternals {
 

@@ -1,13 +1,16 @@
 package io.techasylum.kafka.statestore.document.no2;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.state.StoreBuilder;
-import org.dizitart.no2.Document;
 import org.dizitart.no2.IndexOptions;
 import org.dizitart.no2.IndexType;
-
-import java.util.*;
 
 public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocumentStore<K>> {
 

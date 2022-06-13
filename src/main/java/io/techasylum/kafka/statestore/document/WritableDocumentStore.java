@@ -1,10 +1,10 @@
 package io.techasylum.kafka.statestore.document;
 
+import java.util.List;
+
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.StateStore;
 import org.dizitart.no2.Document;
-
-import java.util.List;
 
 public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocumentStore<Key>, IndexedDocumentStore {
 

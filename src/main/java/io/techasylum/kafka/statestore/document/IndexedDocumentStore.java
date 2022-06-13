@@ -1,11 +1,11 @@
 package io.techasylum.kafka.statestore.document;
 
+import java.util.Collection;
+
 import org.dizitart.no2.Index;
 import org.dizitart.no2.IndexOptions;
 import org.dizitart.no2.IndexType;
 import org.dizitart.no2.exceptions.IndexingException;
-
-import java.util.Collection;
 
 public interface IndexedDocumentStore {
 

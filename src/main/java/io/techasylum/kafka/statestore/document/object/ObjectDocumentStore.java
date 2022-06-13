@@ -1,9 +1,9 @@
 package io.techasylum.kafka.statestore.document.object;
 
+import java.util.List;
+
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.StateStore;
-
-import java.util.List;
 
 public interface ObjectDocumentStore<K, V, F, O> extends StateStore, ReadOnlyObjectDocumentStore<K, V, F, O> {
 

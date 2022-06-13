@@ -33,7 +33,6 @@ import org.springframework.util.FileSystemUtils;
 
 import static org.dizitart.no2.filters.Filters.and;
 import static org.dizitart.no2.filters.Filters.regex;
-import static org.dizitart.no2.filters.PatchedFilters.gte;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;

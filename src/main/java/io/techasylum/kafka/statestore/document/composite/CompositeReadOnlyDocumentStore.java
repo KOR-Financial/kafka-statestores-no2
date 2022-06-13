@@ -1,5 +1,10 @@
 package io.techasylum.kafka.statestore.document.composite;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import io.techasylum.kafka.statestore.document.ReadOnlyCompositeDocumentStore;
 import io.techasylum.kafka.statestore.document.ReadOnlyDocumentStore;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
@@ -10,11 +15,6 @@ import org.dizitart.no2.Document;
 import org.dizitart.no2.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 /**
  * A wrapper over the underlying {@link ReadOnlyCompositeDocumentStore}s found in a {@link

@@ -1,5 +1,8 @@
 package io.techasylum.kafka.statestore.document;
 
+import java.util.Collections;
+import java.util.Set;
+
 import io.techasylum.kafka.statestore.document.composite.CompositeIndexedDocumentStore;
 import io.techasylum.kafka.statestore.document.composite.CompositeReadOnlyDocumentStore;
 import io.techasylum.kafka.statestore.document.object.ReadOnlyObjectDocumentStore;
@@ -9,9 +12,6 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.apache.kafka.streams.state.internals.StateStoreProvider;
-
-import java.util.Collections;
-import java.util.Set;
 
 /**
  * Provides access to the {@link QueryableStoreType}s provided by this library.

@@ -1,10 +1,10 @@
 package io.techasylum.kafka.statestore.document.internals;
 
-import org.apache.kafka.common.network.TransferableChannel;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+
+import org.apache.kafka.common.network.TransferableChannel;
 
 public class ByteBufferChannel implements TransferableChannel {
     private final ByteBuffer buf;

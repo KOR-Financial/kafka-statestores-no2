@@ -1,5 +1,9 @@
 package io.techasylum.kafka.statestore.document.composite;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import io.techasylum.kafka.statestore.document.IndexedCompositeDocumentStore;
 import io.techasylum.kafka.statestore.document.IndexedDocumentStore;
 import org.apache.kafka.streams.state.QueryableStoreType;
@@ -8,10 +12,6 @@ import org.dizitart.no2.Index;
 import org.dizitart.no2.IndexOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import static java.util.stream.Collectors.toMap;
 
