@@ -370,7 +370,11 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         public void restore(byte[] key, byte[] value) {
             K k = store.serdes.keyFrom(key);
             Document v = store.serdes.valueFrom(value);
-            store.store(k, v);
+            if (value != null) {
+                store.store(k, v);
+            } else {
+                store.delete(k);
+            }
         }
     }
 }
