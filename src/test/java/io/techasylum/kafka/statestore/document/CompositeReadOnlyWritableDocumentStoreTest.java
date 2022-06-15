@@ -41,7 +41,9 @@ import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.dizitart.no2.IndexOptions.indexOptions;
 import static org.dizitart.no2.IndexType.Fulltext;
 import static org.dizitart.no2.IndexType.Unique;
@@ -398,9 +400,11 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         assertThat(theIndexedStore.hasIndex("title")).extractingFromEntries(Map.Entry::getValue).containsOnly(false);
         theIndexedStore.createIndex("title", indexOptions(Fulltext, true));
 
-        Map<Integer, Boolean> indexingPartitions = theIndexedStore.isIndexing("title");
-        assertThat(indexingPartitions).hasSize(1);
-        assertThat(indexingPartitions.get(0)).isTrue();
+        await().atMost(5, SECONDS).untilAsserted(() -> {
+            Map<Integer, Boolean> indexingPartitions = theIndexedStore.isIndexing("title");
+            assertThat(indexingPartitions).hasSize(1);
+            assertThat(indexingPartitions.get(0)).isFalse();
+        });
 
         Map<Integer, Collection<Index>> retrievedIndices = theIndexedStore.listIndices();
         assertThat(retrievedIndices).hasSize(1);

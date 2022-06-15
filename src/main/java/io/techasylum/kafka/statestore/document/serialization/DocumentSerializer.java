@@ -20,7 +20,11 @@ class DocumentSerializer implements Serializer<Document> {
 	@Override
 	public byte[] serialize(String topic, Document data) {
 		try {
-			return objectMapper.writeValueAsBytes(data);
+			if (data == null) {
+				return null;
+			} else {
+				return objectMapper.writeValueAsBytes(data);
+			}
 		}
 		catch (JsonProcessingException ex) {
 			logger.error("Could not serialize document.", ex);

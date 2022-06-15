@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.util.FileSystemUtils;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 import static org.dizitart.no2.filters.Filters.and;
 import static org.dizitart.no2.filters.Filters.regex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,11 +43,12 @@ class NitriteObjectStoreTest {
     private TopologyTestDriver testDriver;
     private WritableDocumentStore<String> store;
 
+    private Serde<Movie> stateSerde  = new JsonSerde<>(Movie.class);;
     private final MovieConverter movieConverter = new MovieConverter();
 
     private TestOutputTopic<String, MovieEvent> outputTopic;
     private TestInputTopic<String, MovieEvent> inputTopic;
-    private TestOutputTopic<String, Movie> stateTopic;
+    private TestOutputTopic<String, byte[]> stateTopic;
 
     @BeforeEach
     public void setup() throws IOException {
@@ -77,7 +80,7 @@ class NitriteObjectStoreTest {
         outputTopic = testDriver.createOutputTopic("movie-events", Serdes.String().deserializer(), eventSerde.deserializer());
         inputTopic = testDriver.createInputTopic("movie-events", Serdes.String().serializer(), eventSerde.serializer());
 
-        stateTopic = testDriver.createOutputTopic("movieService-movies-changelog", Serdes.String().deserializer(), new JsonSerde<>(Movie.class).deserializer());
+        stateTopic = testDriver.createOutputTopic("movieService-movies-changelog", Serdes.String().deserializer(), new Serdes.ByteArraySerde().deserializer());
     }
 
     @AfterEach
@@ -94,7 +97,10 @@ class NitriteObjectStoreTest {
         assertEquals(new KeyValue<>(key, new MovieCommandFeedback(cmd, null)), outputTopic.readKeyValue());
         assertTrue(outputTopic.isEmpty());
 
-        assertEquals(new KeyValue<>(key, new Movie(key, "The Matrix", 1999, 8.7f)), stateTopic.readKeyValue());
+        KeyValue<String, byte[]> stateRecord = stateTopic.readKeyValue();
+        Movie movieState = stateSerde.deserializer().deserialize("movieService-movies-changelog", stateRecord.value);
+        assertEquals(key, stateRecord.key);
+        assertEquals(new Movie(key, "The Matrix", 1999, 8.7f), movieState);
         assertTrue(stateTopic.isEmpty());
 
         assertEquals(new Movie("the_matrix", "The Matrix", 1999, 8.7f), movieConverter.fromDocument(store.get("the_matrix")));
@@ -109,6 +115,11 @@ class NitriteObjectStoreTest {
         inputTopic.pipeInput("the_matrix", new DeleteMovieCommand());
 
         assertNull(store.get("the_matrix"));
+
+        await().atMost(10_000, SECONDS).untilAsserted(() -> {
+            var state = stateTopic.readValue();
+            assertNull(state); // tombstone should be written as null value
+        });
     }
 
     @Test
