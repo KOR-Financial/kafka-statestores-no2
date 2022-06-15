@@ -19,6 +19,26 @@ public class PatchedFilters {
     }
 
     /**
+     * Creates an equality filter which matches documents where the value
+     * of a field equals the specified value.
+     *
+     * [[app-listing]]
+     * [source,java]
+     * .Example
+     * --
+     * // matches all documents where 'age' field has value as 30
+     * collection.find(eq("age", 30));
+     * --
+     *
+     * @param field the value
+     * @param value the value
+     * @return the equality filter.
+     */
+    public static Filter eq(String field, Object value) {
+        return new PatchedEqualsFilter(field, value);
+    }
+
+    /**
      * Creates a greater than filter which matches those documents where the value
      * of the value is greater than (i.e. &gt;) the specified value.
      *

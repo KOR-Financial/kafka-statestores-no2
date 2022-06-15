@@ -148,7 +148,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     @Test
     public void shouldFindValueWithFieldQuery() {
         stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
-        final Cursor queryCursor = theStore.find(Filters.eq("title", matrix2.title()));
+        final Cursor queryCursor = theStore.find(PatchedFilters.eq("title", matrix2.title()));
         assertThat(objectMapper.convertValue(queryCursor.firstOrDefault(), Movie.class)).isEqualTo(matrix2);
     }
 

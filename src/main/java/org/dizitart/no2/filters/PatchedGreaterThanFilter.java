@@ -22,6 +22,8 @@ import static org.dizitart.no2.exceptions.ErrorMessage.errorMessage;
 import static org.dizitart.no2.util.DocumentUtils.getFieldValue;
 import static org.dizitart.no2.util.NumberUtils.compare;
 
+/* This filter compares the input against what is stored in the database */
+/* Line 71 has been adjusted to support the inversion of the comparison check */
 class PatchedGreaterThanFilter extends ComparisonFilter {
 
     PatchedGreaterThanFilter(String field, Object value) {
