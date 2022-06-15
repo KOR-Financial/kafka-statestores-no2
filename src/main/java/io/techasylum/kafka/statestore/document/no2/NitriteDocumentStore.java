@@ -366,14 +366,15 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
             this.store = store;
         }
 
+        // TODO: write IT to verify its workings !!!
         @Override
         public void restore(byte[] key, byte[] value) {
             K k = store.serdes.keyFrom(key);
             Document v = store.serdes.valueFrom(value);
-            if (value != null) {
-                store.store(k, v);
-            } else {
+            if (v == null) {
                 store.delete(k);
+            } else {
+                store.store(k, v);
             }
         }
     }
