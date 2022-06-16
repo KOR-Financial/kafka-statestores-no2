@@ -17,7 +17,11 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import org.dizitart.no2.Constants;
 import org.dizitart.no2.Document;
+import org.dizitart.no2.NitriteId;
+
+import static org.dizitart.no2.Constants.DOC_ID;
 
 class DocumentDeserializer extends StdDeserializer<Document> {
 
@@ -32,7 +36,19 @@ class DocumentDeserializer extends StdDeserializer<Document> {
 	public Document deserialize(JsonParser jsonParser, DeserializationContext ctxt)
 			throws IOException {
 		JsonNode node = jsonParser.getCodec().readTree(jsonParser);
-		return convertJsonToDocument(node);
+		return convertJsonToRootDocument(node);
+	}
+
+	private Document convertJsonToRootDocument(JsonNode jsonNode) {
+		Document document = new Document();
+		jsonNode.fields().forEachRemaining((field) -> {
+			if (DOC_ID.equals(field.getKey())) {
+				document.put(DOC_ID, NitriteId.createId(jsonNode.get(DOC_ID).asLong()).getIdValue());
+			} else {
+				document.put(field.getKey(), extractValue(field.getValue()));
+			}
+		});
+		return document;
 	}
 
 	private Document convertJsonToDocument(JsonNode jsonNode) {

@@ -27,6 +27,7 @@ class DocumentDeserializerTests {
 	//formatter:off
 	private static final String JSON = """
 			{
+				"_id": 805164877017594,
 				"foo": "bar",
 				"hasEmbeddedObject": true,
 				"embedded": {
@@ -58,6 +59,9 @@ class DocumentDeserializerTests {
 	@Test
 	void shouldDeserializeToDocument() throws JsonProcessingException {
 		Document document = objectMapper.readValue(JSON, Document.class);
+
+		// Nitrite ID
+		assertThat(document.getId().getIdValue()).isEqualTo(805164877017594L);
 
 		// String
 		assertThat(document.get("foo")).isEqualTo("bar");
