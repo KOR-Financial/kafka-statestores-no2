@@ -20,6 +20,9 @@ class DocumentDeserializer implements Deserializer<Document> {
 
 	@Override
 	public Document deserialize(String topic, byte[] data) {
+		if (data == null) {
+			return null;
+		}
 		try {
 			return objectMapper.readValue(data, Document.class);
 		}
