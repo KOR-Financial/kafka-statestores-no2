@@ -21,9 +21,9 @@ class DocumentDeserializerTests {
 
 	@Test
 	void shouldDeserializeDocument() {
-		final Document document = documentDeserializer.deserialize("my-topic", null);
+		final Document document = documentDeserializer.deserialize("my-topic", JSON.getBytes());
 		assertThatObject(document).isNotNull();
-		assertThatObject(document.getId()).isEqualTo(805164877017594L);
+		assertThatObject(document.getId().getIdValue()).isEqualTo(805164877017594L);
 		assertThatObject(document.get("foo")).isEqualTo("bar");
 	}
 
