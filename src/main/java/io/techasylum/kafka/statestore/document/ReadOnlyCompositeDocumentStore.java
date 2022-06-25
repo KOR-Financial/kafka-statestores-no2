@@ -6,7 +6,7 @@ import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.dizitart.no2.Document;
 import org.dizitart.no2.Filter;
 
-public interface ReadOnlyCompositeDocumentStore<Key> {
+public interface ReadOnlyCompositeDocumentStore<Key, Doc extends Document> {
 
     /**
      * Applies a filter on the store and returns a cursor to the
@@ -19,7 +19,7 @@ public interface ReadOnlyCompositeDocumentStore<Key> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `filter` is null.
      */
-    CompositeCursor find(Filter filter);
+    CompositeCursor<Doc> find(Filter filter);
 
     /**
      * Returns a customized cursor to all objects in the store.
@@ -28,7 +28,7 @@ public interface ReadOnlyCompositeDocumentStore<Key> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `findOptions` is null.
      */
-    CompositeCursor findWithOptions(CompositeFindOptions options);
+    CompositeCursor<Doc> findWithOptions(CompositeFindOptions options);
 
     /**
      * Applies a filter on the store and returns a customized cursor to the
@@ -42,7 +42,7 @@ public interface ReadOnlyCompositeDocumentStore<Key> {
      * @return a cursor to all selected objects.
      * @throws NullPointerException if `findOptions` is null.
      */
-    CompositeCursor findWithOptions(Filter filter, CompositeFindOptions options);
+    CompositeCursor<Doc> findWithOptions(Filter filter, CompositeFindOptions options);
 
 
     /**
@@ -53,6 +53,6 @@ public interface ReadOnlyCompositeDocumentStore<Key> {
      * @throws NullPointerException if `key` is null.
      * @throws InvalidStateStoreException if the store is not initialized
      */
-    Document get(Key key);
+    Doc get(Key key);
 
 }

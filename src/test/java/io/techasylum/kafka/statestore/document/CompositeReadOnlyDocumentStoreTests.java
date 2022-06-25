@@ -1,7 +1,6 @@
 package io.techasylum.kafka.statestore.document;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +26,6 @@ import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.StateSerdes;
 import org.apache.kafka.streams.state.internals.CompositeReadOnlyKeyValueStore;
-import org.dizitart.no2.Cursor;
 import org.dizitart.no2.Document;
 import org.dizitart.no2.Index;
 import org.dizitart.no2.exceptions.FilterException;
@@ -53,15 +51,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class CompositeReadOnlyWritableDocumentStoreTest {
+public class CompositeReadOnlyDocumentStoreTests {
 
     private final String storeName = "my-store";
     private StateStoreProviderStub stubProviderTwo;
-    private NitriteDocumentStore<String> stubOneUnderlying;
-    private NitriteDocumentStore<String> otherUnderlyingStore;
-    private CompositeReadOnlyDocumentStore<String> theStore;
+    private NitriteDocumentStore<String, Document> stubOneUnderlying;
+    private NitriteDocumentStore<String, Document> otherUnderlyingStore;
+    private CompositeReadOnlyDocumentStore<String, Document> theStore;
     private CompositeIndexedDocumentStore theIndexedStore;
-    private DocumentSerde movieSerde;
+    private DocumentSerde<Document> movieSerde;
 
     private ObjectMapper objectMapper;
 
@@ -72,10 +70,10 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     private final Movie matrix4 = new Movie("MTRX4", "The Matrix Resurrections", 2021, 6.0f);
 
     @BeforeEach
-    public void before() throws IOException {
+    public void before() {
         objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        movieSerde = new DocumentSerde(objectMapper);
+        movieSerde = new DocumentSerde<>(Document.class, objectMapper);
 
         final StateStoreProviderStub stubProviderOne = new StateStoreProviderStub(false);
         stubProviderTwo = new StateStoreProviderStub(false);
@@ -96,8 +94,8 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         );
     }
 
-    private NitriteDocumentStore<String> newStoreInstance(int partition) throws IOException {
-        final NitriteDocumentStore<String> store = DocumentStores.nitriteStore(storeName, Serdes.String(), movieSerde, "code").build();
+    private NitriteDocumentStore<String, Document> newStoreInstance(int partition) {
+        final NitriteDocumentStore<String, Document> store = DocumentStores.nitriteStore(storeName, "code", Serdes.String(), Document.class, objectMapper).build();
         File storeDir = getNewStoreDir();
 
         @SuppressWarnings("rawtypes") final InternalMockProcessorContext context =
@@ -148,13 +146,13 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     @Test
     public void shouldFindValueWithFieldQuery() {
         stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
-        final Cursor queryCursor = theStore.find(PatchedFilters.eq("title", matrix2.title()));
+        final CompositeCursor<Document> queryCursor = theStore.find(PatchedFilters.eq("title", matrix2.title()));
         assertThat(objectMapper.convertValue(queryCursor.firstOrDefault(), Movie.class)).isEqualTo(matrix2);
     }
 
     @Test
-    public void shouldFindValueForKeyWhenMultiStores() throws IOException {
-        final WritableDocumentStore<String> store = newStoreInstance(3);
+    public void shouldFindValueForKeyWhenMultiStores() {
+        final WritableDocumentStore<String, Document> store = newStoreInstance(3);
         stubProviderTwo.addStore(storeName, store);
 
         store.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -170,7 +168,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
         stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        Cursor movieQueryCursor = theStore.find(PatchedFilters.gt("year", 2000));
+        CompositeCursor<Document> movieQueryCursor = theStore.find(PatchedFilters.gt("year", 2000));
         assertThat(movieQueryCursor.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor.size()).isEqualTo(2);
         assertThat(movieQueryCursor.toList()).hasSize(2);
@@ -183,14 +181,14 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
         stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        Cursor movieQueryCursor1 = theStore.findWithOptions(CompositeFindOptions.limit(Map.of(0, 0),2));
+        CompositeCursor<Document> movieQueryCursor1 = theStore.findWithOptions(CompositeFindOptions.limit(Map.of(0, 0),2));
         assertThat(movieQueryCursor1.totalCount()).isEqualTo(3);
         assertThat(movieQueryCursor1.size()).isEqualTo(2);
         assertThat(movieQueryCursor1.toList()).hasSize(2);
         assertThat(movieQueryCursor1.hasMore()).isTrue();
         Map<Integer, Integer> nextOffsets = ((CompositeCursor) movieQueryCursor1).nextOffsets();
         assertThat(nextOffsets).containsExactlyEntriesOf(Map.of(0, 2));
-        Cursor movieQueryCursor2 = theStore.findWithOptions(CompositeFindOptions.limit(nextOffsets,2));
+        CompositeCursor<Document> movieQueryCursor2 = theStore.findWithOptions(CompositeFindOptions.limit(nextOffsets,2));
         assertThat(movieQueryCursor2.totalCount()).isEqualTo(3);
         assertThat(movieQueryCursor2.size()).isEqualTo(1);
         assertThat(movieQueryCursor2.toList()).hasSize(1);
@@ -203,14 +201,14 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         stubOneUnderlying.put(matrix2.code(), new Document(objectMapper.convertValue(matrix2, HashMap.class)));
         stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
-        Cursor movieQueryCursor1 = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.limit(Map.of(0, 0),1));
+        CompositeCursor<Document> movieQueryCursor1 = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.limit(Map.of(0, 0),1));
         assertThat(movieQueryCursor1.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor1.size()).isEqualTo(1);
         assertThat(movieQueryCursor1.toList()).hasSize(1);
         assertThat(movieQueryCursor1.hasMore()).isTrue();
         Map<Integer, Integer> nextOffsets = ((CompositeCursor) movieQueryCursor1).nextOffsets();
         assertThat(nextOffsets).containsExactlyEntriesOf(Map.of(0, 1));
-        Cursor movieQueryCursor2 = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.limit(nextOffsets,1));
+        CompositeCursor<Document> movieQueryCursor2 = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.limit(nextOffsets,1));
         assertThat(movieQueryCursor2.totalCount()).isEqualTo(2);
         assertThat(movieQueryCursor2.size()).isEqualTo(1);
         assertThat(movieQueryCursor2.toList()).hasSize(1);
@@ -218,8 +216,8 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
     }
 
     @Test
-    public void shouldSupportFindAcrossMultipleStores() throws IOException {
-        final WritableDocumentStore<String> store = newStoreInstance(3);
+    public void shouldSupportFindAcrossMultipleStores() {
+        final WritableDocumentStore<String, Document> store = newStoreInstance(3);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -228,13 +226,13 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         store.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
         store.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
 
-        Cursor movieQueryCursor = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.sort("year", Ascending));
+        CompositeCursor<Document> movieQueryCursor = theStore.findWithOptions(PatchedFilters.gt("year", 2000), CompositeFindOptions.sort("year", Ascending));
         assertThat(movieQueryCursor.toList()).map((d) -> d.get("code")).containsExactlyInAnyOrder(matrix2.code(), matrix3.code());
     }
 
     @Test
-    public void shouldSupportLimitAcrossMultipleStores() throws IOException {
-        final WritableDocumentStore<String> store = newStoreInstance(1);
+    public void shouldSupportLimitAcrossMultipleStores() {
+        final WritableDocumentStore<String, Document> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -244,20 +242,20 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         store.put(matrix4.code(), new Document(objectMapper.convertValue(matrix4, HashMap.class)));
         store.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
 
-        Cursor movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(Map.of(0, 0, 1, 0), 2));
+        CompositeCursor<Document> movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(Map.of(0, 0, 1, 0), 2));
         assertThat(movieQueryCursorPage1.toList()).map((d) -> d.get("code")).containsExactly(speed.code(), matrix1.code());
         assertThat(movieQueryCursorPage1.hasMore()).isTrue();
-        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
+        CompositeCursor<Document> movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
         assertThat(movieQueryCursorPage2.toList()).map((d) -> d.get("code")).containsExactlyInAnyOrder(matrix2.code(), matrix3.code());
         assertThat(movieQueryCursorPage2.hasMore()).isTrue();
-        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
+        CompositeCursor<Document> movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("year", Ascending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
         assertThat(movieQueryCursorPage3.toList()).map((d) -> d.get("code")).containsExactly(matrix4.code());
         assertThat(movieQueryCursorPage3.hasMore()).isFalse();
     }
 
     @Test
-    public void shouldSupportLimitAcrossMultipleStoresWithAllPageSizes() throws IOException {
-        final WritableDocumentStore<String> store = newStoreInstance(1);
+    public void shouldSupportLimitAcrossMultipleStoresWithAllPageSizes() {
+        final WritableDocumentStore<String, Document> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -267,66 +265,66 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         store.put(matrix4.code(), new Document(objectMapper.convertValue(matrix4, HashMap.class)));
         store.put(speed.code(), new Document(objectMapper.convertValue(speed, HashMap.class)));
 
-        Cursor movieQueryCursorPageSize1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(1));
+        CompositeCursor<Document> movieQueryCursorPageSize1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(1));
         assertThat(movieQueryCursorPageSize1.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code());
         assertThat(movieQueryCursorPageSize1.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPageSize2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
+        CompositeCursor<Document> movieQueryCursorPageSize2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
         assertThat(movieQueryCursorPageSize2.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code());
         assertThat(movieQueryCursorPageSize2.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPageSize3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(3));
+        CompositeCursor<Document> movieQueryCursorPageSize3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(3));
         assertThat(movieQueryCursorPageSize3.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code(), matrix2.code());
         assertThat(movieQueryCursorPageSize3.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPageSize4 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(4));
+        CompositeCursor<Document> movieQueryCursorPageSize4 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(4));
         assertThat(movieQueryCursorPageSize4.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code(), matrix2.code(), matrix3.code());
         assertThat(movieQueryCursorPageSize4.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPageSize5 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(5));
+        CompositeCursor<Document> movieQueryCursorPageSize5 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(5));
         assertThat(movieQueryCursorPageSize5.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code(), matrix2.code(), matrix3.code(), matrix4.code());
         assertThat(movieQueryCursorPageSize5.hasMore()).isFalse();
 
-        Cursor movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
+        CompositeCursor<Document> movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
         assertThat(movieQueryCursorPage1.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code());
         assertThat(movieQueryCursorPage1.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
+        CompositeCursor<Document> movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
         assertThat(movieQueryCursorPage2.toList()).map((d) -> d.get("code")).containsExactly(matrix2.code(), matrix3.code());
         assertThat(movieQueryCursorPage2.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
+        CompositeCursor<Document> movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
         assertThat(movieQueryCursorPage3.toList()).map((d) -> d.get("code")).containsExactly(matrix4.code());
         assertThat(movieQueryCursorPage3.hasMore()).isFalse();
     }
 
     // TODO: we don't expect partitions to change, and if they do pagination should be reset either way, so should we be more strict on this?
     @Test
-    public void shouldSupportOffsetsForUnknownPartitions() throws IOException {
-        final WritableDocumentStore<String> store = newStoreInstance(1);
+    public void shouldSupportOffsetsForUnknownPartitions() {
+        final WritableDocumentStore<String, Document> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
-        Cursor movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
+        CompositeCursor<Document> movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
         assertThat(movieQueryCursorPage1.toList()).isEmpty();
         assertThat(movieQueryCursorPage1.hasMore()).isFalse();
 
-        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(Map.of(0, 0, 1, 0, 2, 1, 3, 5), 2));
+        CompositeCursor<Document> movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(Map.of(0, 0, 1, 0, 2, 1, 3, 5), 2));
         assertThat(movieQueryCursorPage2.toList()).isEmpty();
         assertThat(movieQueryCursorPage2.hasMore()).isFalse();
     }
 
     // TODO: what if the state store shrinks as we paginate through it, due to retention policies or tombstone records?
     @Test
-    public void shouldThrowExceptionOnInvalidOffsetsForExistingPartitions() throws IOException {
-        final WritableDocumentStore<String> store = newStoreInstance(1);
+    public void shouldThrowExceptionOnInvalidOffsetsForExistingPartitions() {
+        final WritableDocumentStore<String, Document> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         assertThrows(ValidationException.class, () -> theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(Map.of(0, 999, 1, 0), 2)));
     }
 
     @Test
-    public void shouldSupportLimitAcrossMultipleStoresWithAllElementsOfFirstPageInSamePartition() throws IOException {
-        final WritableDocumentStore<String> store = newStoreInstance(1);
+    public void shouldSupportLimitAcrossMultipleStoresWithAllElementsOfFirstPageInSamePartition() {
+        final WritableDocumentStore<String, Document> store = newStoreInstance(1);
         stubProviderTwo.addStore(storeName, store);
 
         stubOneUnderlying.put(matrix1.code(), new Document(objectMapper.convertValue(matrix1, HashMap.class)));
@@ -336,15 +334,15 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         store.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
         store.put(matrix4.code(), new Document(objectMapper.convertValue(matrix4, HashMap.class)));
 
-        Cursor movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
+        CompositeCursor<Document> movieQueryCursorPage1 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(2));
         assertThat(movieQueryCursorPage1.toList()).map((d) -> d.get("code")).containsExactly(matrix1.code(), speed.code());
         assertThat(movieQueryCursorPage1.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
+        CompositeCursor<Document> movieQueryCursorPage2 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage1).nextOffsets(), 2));
         assertThat(movieQueryCursorPage2.toList()).map((d) -> d.get("code")).containsExactly(matrix2.code(), matrix3.code());
         assertThat(movieQueryCursorPage2.hasMore()).isTrue();
 
-        Cursor movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
+        CompositeCursor<Document> movieQueryCursorPage3 = theStore.findWithOptions(CompositeFindOptions.sort("rating", Descending).thenLimit(((CompositeCursor) movieQueryCursorPage2).nextOffsets(), 2));
         assertThat(movieQueryCursorPage3.toList()).map((d) -> d.get("code")).containsExactly(matrix4.code());
         assertThat(movieQueryCursorPage3.hasMore()).isFalse();
     }
@@ -368,7 +366,7 @@ public class CompositeReadOnlyWritableDocumentStoreTest {
         stubOneUnderlying.put(matrix3.code(), new Document(objectMapper.convertValue(matrix3, HashMap.class)));
 
         theIndexedStore.createIndex("title", indexOptions(Fulltext, false));
-        Cursor movieQueryCursor = theStore.find(Filters.text("title", "The Matrix"));
+        CompositeCursor<Document> movieQueryCursor = theStore.find(Filters.text("title", "The Matrix"));
         assertThat(movieQueryCursor.totalCount()).isEqualTo(3);
         assertThat(movieQueryCursor.size()).isEqualTo(3);
         assertThat(movieQueryCursor.toList()).hasSize(3);

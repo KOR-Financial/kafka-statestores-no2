@@ -5,19 +5,24 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.state.StoreBuilder;
+import org.dizitart.no2.Document;
 import org.dizitart.no2.IndexOptions;
 import org.dizitart.no2.IndexType;
 
-public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocumentStore<K>> {
+public class NitriteDocumentStoreBuilder<Key, Doc extends Document> implements StoreBuilder<
+        NitriteDocumentStore<Key, Doc>> {
 
     private final String name;
-    private final Serde<K> keySerde;
-    private final DocumentSerde valueSerde;
+    private final Serde<Key> keySerde;
+    private final DocumentSerde<Doc> valueSerde;
     private final String keyFieldName;
+    private final Function<Document, Doc> documentConverter;
 
     private Map<String, String> logConfig = new HashMap<>();
     private final Map<String, IndexOptions> indices = new HashMap<>();
@@ -25,25 +30,26 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
 
     boolean enableLogging = true;
 
-    public NitriteDocumentStoreBuilder(String name, Serde<K> keySerde, DocumentSerde valueSerde, String keyFieldName) {
+    public NitriteDocumentStoreBuilder(String name, String keyFieldName, Serde<Key> keySerde, Class<Doc> docClass, ObjectMapper objectMapper) {
         this.name = name;
         this.keySerde = keySerde;
-        this.valueSerde = valueSerde;
+        this.valueSerde = new DocumentSerde<>(docClass, objectMapper);
         this.keyFieldName = keyFieldName;
+        this.documentConverter = (document) -> objectMapper.convertValue(document, docClass);
     }
 
     @Override
-    public NitriteDocumentStoreBuilder<K> withCachingEnabled() {
+    public NitriteDocumentStoreBuilder<Key, Doc> withCachingEnabled() {
         throw new UnsupportedOperationException("caching is not available for nitrite stores");
     }
 
     @Override
-    public NitriteDocumentStoreBuilder<K> withCachingDisabled() {
+    public NitriteDocumentStoreBuilder<Key, Doc> withCachingDisabled() {
         return this;
     }
 
     @Override
-    public NitriteDocumentStoreBuilder<K> withLoggingEnabled(Map<String, String> config) {
+    public NitriteDocumentStoreBuilder<Key, Doc> withLoggingEnabled(Map<String, String> config) {
         Objects.requireNonNull(config, "config can't be null");
         enableLogging = true;
         this.logConfig = config;
@@ -51,7 +57,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
     }
 
     @Override
-    public NitriteDocumentStoreBuilder<K> withLoggingDisabled() {
+    public NitriteDocumentStoreBuilder<Key, Doc> withLoggingDisabled() {
         enableLogging = false;
         logConfig.clear();
         return this;
@@ -71,7 +77,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
      * @see #withFullTextIndexOn(String)
      * @see #withIndex(String, IndexOptions)
      */
-    public NitriteDocumentStoreBuilder<K> withIndexOn(String field) {
+    public NitriteDocumentStoreBuilder<Key, Doc> withIndexOn(String field) {
         return withIndex(field, IndexOptions.indexOptions(IndexType.NonUnique, true));
     }
 
@@ -89,7 +95,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
      * @see #withFullTextIndexOn(String)
      * @see #withIndex(String, IndexOptions)
      */
-    public NitriteDocumentStoreBuilder<K> withUniqueIndexOn(String field) {
+    public NitriteDocumentStoreBuilder<Key, Doc> withUniqueIndexOn(String field) {
         return withIndex(field, IndexOptions.indexOptions(IndexType.Unique, true));
     }
 
@@ -107,7 +113,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
      * @see #withUniqueIndexOn(String)
      * @see #withIndex(String, IndexOptions)
      */
-    public NitriteDocumentStoreBuilder<K> withFullTextIndexOn(String field) {
+    public NitriteDocumentStoreBuilder<Key, Doc> withFullTextIndexOn(String field) {
         return withIndex(field, IndexOptions.indexOptions(IndexType.Fulltext, true));
     }
 
@@ -122,7 +128,7 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
      * @see #withFullTextIndexOn(String)
      * @see #withIndex(String, IndexOptions)
      */
-    public NitriteDocumentStoreBuilder<K> withIndex(String field, IndexOptions options) {
+    public NitriteDocumentStoreBuilder<Key, Doc> withIndex(String field, IndexOptions options) {
         indices.put(field, options);
         return this;
     }
@@ -133,14 +139,14 @@ public class NitriteDocumentStoreBuilder<K> implements StoreBuilder<NitriteDocum
      * @param customizer the customizer
      * @return the Nitrite document store builder
      */
-    public NitriteDocumentStoreBuilder<K> withCustomizer(NitriteCustomizer customizer) {
+    public NitriteDocumentStoreBuilder<Key, Doc> withCustomizer(NitriteCustomizer customizer) {
         customizers.add(customizer);
         return this;
     }
 
     @Override
-    public NitriteDocumentStore<K> build() {
-        return new NitriteDocumentStore(this.name, this.keySerde, this.valueSerde, this.keyFieldName, indices, customizers, enableLogging);
+    public NitriteDocumentStore<Key, Doc> build() {
+        return new NitriteDocumentStore(this.name, this.keySerde, this.valueSerde, this.keyFieldName, this.documentConverter, indices, customizers, enableLogging);
     }
 
     @Override

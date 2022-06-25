@@ -12,6 +12,7 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.apache.kafka.streams.state.internals.StateStoreProvider;
+import org.dizitart.no2.Document;
 
 /**
  * Provides access to the {@link QueryableStoreType}s provided by this library.
@@ -35,10 +36,11 @@ public class QueryableDocumentStoreTypes {
     /**
      * A {@link QueryableStoreType} that accepts {@link ReadOnlyDocumentStore}.
      *
-     * @param <K> key type of the store
+     * @param <Key> key type of the store
+     * @param <Doc> document type of the store
      * @return {@link CompositeDocumentStoreType}
      */
-    public static <K> QueryableStoreType<ReadOnlyCompositeDocumentStore<K>> documentStore() {
+    public static <Key, Doc extends Document> QueryableStoreType<ReadOnlyCompositeDocumentStore<Key, Doc>> documentStore() {
         return new CompositeDocumentStoreType<>();
     }
 
@@ -71,27 +73,27 @@ public class QueryableDocumentStoreTypes {
         }
     }
 
-    public static class CompositeDocumentStoreType<K> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyCompositeDocumentStore<K>> {
+    public static class CompositeDocumentStoreType<Key, Doc extends Document> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyCompositeDocumentStore<Key, Doc>> {
 
         CompositeDocumentStoreType() {
             super(Collections.singleton(ReadOnlyDocumentStore.class));
         }
 
         @Override
-        public ReadOnlyCompositeDocumentStore<K> create(final StateStoreProvider storeProvider, final String storeName) {
+        public ReadOnlyCompositeDocumentStore<Key, Doc> create(final StateStoreProvider storeProvider, final String storeName) {
             return new CompositeReadOnlyDocumentStore<>(storeProvider, new DocumentStoreType<>(), storeName);
         }
 
     }
 
-    static class DocumentStoreType<K> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyDocumentStore<K>> {
+    static class DocumentStoreType<Key, Doc extends Document> extends QueryableDocumentStoreTypes.QueryableStoreTypeMatcher<ReadOnlyDocumentStore<Key, Doc>> {
 
         DocumentStoreType() {
             super(Collections.singleton(ReadOnlyDocumentStore.class));
         }
 
         @Override
-        public ReadOnlyDocumentStore<K> create(final StateStoreProvider storeProvider, final String storeName) {
+        public ReadOnlyDocumentStore<Key, Doc> create(final StateStoreProvider storeProvider, final String storeName) {
             throw new UnsupportedOperationException("Cannot create individual stores through the QueryableStoreTypeMatcher");
         }
 
