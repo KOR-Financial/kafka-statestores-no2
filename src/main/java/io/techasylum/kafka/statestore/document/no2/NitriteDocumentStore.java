@@ -10,8 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 import io.techasylum.kafka.statestore.document.WritableDocumentStore;
+import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.utils.Bytes;
@@ -27,7 +29,6 @@ import org.apache.kafka.streams.processor.internals.ProcessorContextUtils;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.processor.internals.SerdeGetter;
 import org.apache.kafka.streams.state.StateSerdes;
-import org.dizitart.no2.Cursor;
 import org.dizitart.no2.Document;
 import org.dizitart.no2.Filter;
 import org.dizitart.no2.FindOptions;
@@ -38,6 +39,7 @@ import org.dizitart.no2.NitriteBuilder;
 import org.dizitart.no2.NitriteCollection;
 import org.dizitart.no2.exceptions.NitriteException;
 import org.dizitart.no2.filters.Filters;
+import org.dizitart.no2.objects.Cursor;
 import org.slf4j.Logger;
 
 import static org.apache.kafka.streams.kstream.internals.WrappingNullableUtils.prepareKeySerde;
@@ -46,15 +48,16 @@ import static org.apache.kafka.streams.processor.internals.ProcessorContextUtils
 import static org.dizitart.no2.UpdateOptions.updateOptions;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
+public class NitriteDocumentStore<Key, Doc extends Document> implements WritableDocumentStore<Key, Doc> {
 
     private static final Logger logger = getLogger(NitriteDocumentStore.class);
 
     private int partition;
     private final String name;
-    private final Serde<K> keySerde;
-    private final Serde<Document> valueSerde;
+    private final Serde<Key> keySerde;
+    private final DocumentSerde<Doc> valueSerde;
     private final String keyFieldName;
+    private final Function<Document, Doc> documentConverter;
     private final Map<String, IndexOptions> indices;
     private final List<NitriteCustomizer> customizers;
 
@@ -62,15 +65,16 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
     private Nitrite db;
     private NitriteCollection collection;
-    private StateSerdes<K, Document> serdes;
+    private StateSerdes<Key, Doc> serdes;
 
     InternalProcessorContext context;
 
-    public NitriteDocumentStore(String name, Serde<K> keySerde, Serde<Document> valueSerde, String keyFieldName, Map<String, IndexOptions> indices, List<NitriteCustomizer> customizers, boolean enableLogging) {
+    public NitriteDocumentStore(String name, Serde<Key> keySerde, DocumentSerde<Doc> valueSerde, String keyFieldName, Function<Document, Doc> documentConverter, Map<String, IndexOptions> indices, List<NitriteCustomizer> customizers, boolean enableLogging) {
         this.name = name;
         this.keySerde = keySerde;
         this.valueSerde = valueSerde;
         this.keyFieldName = keyFieldName;
+        this.documentConverter = documentConverter;
         this.indices = indices;
         this.customizers = customizers;
         this.enableLogging = enableLogging;
@@ -182,11 +186,11 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 // == Operations ======================================================================================================
 
     @Override
-    public Document get(K key) {
+    public Doc get(Key key) {
         Objects.requireNonNull(key, "key cannot be null");
         validateStoreOpen();
 
-        Cursor items = this.collection.find(Filters.eq(keyFieldName, key));
+        Cursor<Doc> items = convertCursor(this.collection.find(Filters.eq(keyFieldName, key)));
 
         int cnt = items.totalCount();
         if (cnt == 0) {
@@ -199,31 +203,31 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     }
 
     @Override
-    public Cursor find(Filter filter) {
+    public Cursor<Doc> find(Filter filter) {
         Objects.requireNonNull(filter, "filter cannot be null");
         validateStoreOpen();
 
-        return this.collection.find(filter);
+        return convertCursor(this.collection.find(filter));
     }
 
     @Override
-    public Cursor findWithOptions(FindOptions findOptions) {
+    public Cursor<Doc> findWithOptions(FindOptions findOptions) {
         Objects.requireNonNull(findOptions, "findOptions cannot be null");
         validateStoreOpen();
 
-        return this.collection.find(findOptions);
+        return convertCursor(this.collection.find(findOptions));
     }
 
     @Override
-    public Cursor findWithOptions(Filter filter, FindOptions findOptions) {
+    public Cursor<Doc> findWithOptions(Filter filter, FindOptions findOptions) {
         Objects.requireNonNull(findOptions, "findOptions cannot be null");
         validateStoreOpen();
 
-        return this.collection.find(filter, findOptions);
+        return convertCursor(this.collection.find(filter, findOptions));
     }
 
     @Override
-    public void put(K key, Document value) {
+    public void put(Key key, Doc value) {
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(value, "value cannot be null");
         validateStoreOpen();
@@ -235,12 +239,12 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     }
 
     @Override
-    public Document putIfAbsent(K key, Document value) {
+    public Doc putIfAbsent(Key key, Doc value) {
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(value, "value cannot be null");
         validateStoreOpen();
 
-        final Document previous = this.storeIfAbsent(key, value);
+        final Doc previous = this.storeIfAbsent(key, value);
         if (enableLogging && previous == null) {
             // then it was absent
             log(key, value);
@@ -249,32 +253,32 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     }
 
     @Override
-    public void putAll(List<KeyValue<K, Document>> entries) {
+    public void putAll(List<KeyValue<Key, Doc>> entries) {
         Objects.requireNonNull(entries, "entries cannot be null");
         validateStoreOpen();
 
         this.storeAll(entries);
         if (enableLogging) {
-            for (KeyValue<K, Document> entry : entries) {
+            for (KeyValue<Key, Doc> entry : entries) {
                 this.log(entry.key, entry.value);
             }
         }
     }
 
     @Override
-    public Document delete(K key) {
+    public Doc delete(Key key) {
         Objects.requireNonNull(key, "key cannot be null");
         validateStoreOpen();
 
-        final Document oldValue = this.remove(key);
+        final Doc oldValue = this.remove(key);
         if (enableLogging) {
             log(key, null);
         }
         return oldValue;
     }
 
-    void log(final K key,
-             final Document value) {
+    void log(final Key key,
+             final Doc value) {
         context.logChange(
                 name(),
                 Bytes.wrap(this.serdes.rawKey(key)),
@@ -284,12 +288,12 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
 // == Internal Operations (no logging) ================================================================================
 
-    protected synchronized void store(K key, Document value) {
+    protected synchronized void store(Key key, Doc value) {
         this.collection.update(Filters.eq(keyFieldName, key), value, updateOptions(true));
     }
 
-    protected synchronized Document storeIfAbsent(K key, Document value) {
-        Document existing = this.get(key);
+    protected synchronized Doc storeIfAbsent(Key key, Doc value) {
+        Doc existing = this.get(key);
         if (existing == null) {
             this.store(key, value);
         }
@@ -297,14 +301,14 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         return existing;
     }
 
-    protected synchronized void storeAll(List<KeyValue<K, Document>> entries) {
-        for (KeyValue<K, Document> entry : entries) {
+    protected synchronized void storeAll(List<KeyValue<Key, Doc>> entries) {
+        for (KeyValue<Key, Doc> entry : entries) {
             this.collection.update(Filters.eq(keyFieldName, entry.key), entry.value, updateOptions(true));
         }
     }
 
-    protected Document remove(K key) {
-        Document result = this.get(key);
+    protected Doc remove(Key key) {
+        Doc result = this.get(key);
         if (result == null) {
             return null;
         }
@@ -317,6 +321,10 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
     @Override
     public int getPartition() {
         return partition;
+    }
+
+    private Cursor<Doc> convertCursor(org.dizitart.no2.Cursor collectionCursor) {
+        return new DocumentCursor<>(collectionCursor, documentConverter);
     }
 
 // == Indexes =========================================================================================================
@@ -358,11 +366,11 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
 
 // == Replay ==========================================================================================================
 
-    private static class NitriteRestoreCallback<K> implements StateRestoreCallback {
+    private static class NitriteRestoreCallback<K, D extends Document> implements StateRestoreCallback {
 
-        private final NitriteDocumentStore<K> store;
+        private final NitriteDocumentStore<K, D> store;
 
-        private NitriteRestoreCallback(NitriteDocumentStore<K> store) {
+        private NitriteRestoreCallback(NitriteDocumentStore<K, D> store) {
             this.store = store;
         }
 
@@ -370,7 +378,7 @@ public class NitriteDocumentStore<K> implements WritableDocumentStore<K> {
         @Override
         public void restore(byte[] key, byte[] value) {
             K k = store.serdes.keyFrom(key);
-            Document v = store.serdes.valueFrom(value);
+            D v = store.serdes.valueFrom(value);
             if (v == null) {
                 store.delete(k);
             } else {

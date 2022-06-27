@@ -1,13 +1,14 @@
 package io.techasylum.kafka.statestore.document;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.techasylum.kafka.statestore.document.no2.NitriteDocumentStoreBuilder;
-import io.techasylum.kafka.statestore.document.serialization.DocumentSerde;
 import org.apache.kafka.common.serialization.Serde;
+import org.dizitart.no2.Document;
 
 public final class DocumentStores {
 
-    public static <K> NitriteDocumentStoreBuilder<K> nitriteStore(String name, Serde<K> keySerde, DocumentSerde valueSerde, String keyFieldName) {
-        return new NitriteDocumentStoreBuilder<>(name, keySerde, valueSerde, keyFieldName);
+    public static <Key, Doc extends Document> NitriteDocumentStoreBuilder<Key, Doc> nitriteStore(String name, String keyFieldName, Serde<Key> keySerde, Class<Doc> docClass, ObjectMapper objectMapper) {
+        return new NitriteDocumentStoreBuilder<>(name, keyFieldName, keySerde, docClass, objectMapper);
     }
 
 }

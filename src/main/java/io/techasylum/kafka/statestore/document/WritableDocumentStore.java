@@ -6,7 +6,7 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.StateStore;
 import org.dizitart.no2.Document;
 
-public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocumentStore<Key>, IndexedDocumentStore {
+public interface WritableDocumentStore<Key, Doc extends Document> extends StateStore, ReadOnlyDocumentStore<Key, Doc>, IndexedDocumentStore {
 
     /**
      * Update the value associated with this key.
@@ -16,7 +16,7 @@ public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocument
      *              if the serialized bytes are also {@code null} it is interpreted as deletes
      * @throws NullPointerException If {@code null} is used for key.
      */
-    void put(Key key, Document value);
+    void put(Key key, Doc value);
 
     /**
      * Update the value associated with this key, unless a value is already associated with the key.
@@ -27,7 +27,7 @@ public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocument
      * @return The old value or {@code null} if there is no such key.
      * @throws NullPointerException If {@code null} is used for key.
      */
-    Document putIfAbsent(Key key, Document value);
+    Doc putIfAbsent(Key key, Doc value);
 
     /**
      * Update all the given key/value pairs.
@@ -36,7 +36,7 @@ public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocument
      *                if the serialized bytes are also {@code null} it is interpreted as deletes
      * @throws NullPointerException If {@code null} is used for key.
      */
-    void putAll(List<KeyValue<Key, Document>> entries);
+    void putAll(List<KeyValue<Key, Doc>> entries);
 
     /**
      * Delete the value from the store (if there is one).
@@ -45,5 +45,5 @@ public interface WritableDocumentStore<Key> extends StateStore, ReadOnlyDocument
      * @return The old value or {@code null} if there is no such key.
      * @throws NullPointerException If {@code null} is used for key.
      */
-    Document delete(Key key);
+    Doc delete(Key key);
 }

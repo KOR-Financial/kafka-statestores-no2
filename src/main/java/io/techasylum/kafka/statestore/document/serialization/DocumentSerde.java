@@ -13,23 +13,23 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 import org.dizitart.no2.Document;
 
-public class DocumentSerde implements Serde<Document> {
+public class DocumentSerde<Doc extends Document> implements Serde<Doc> {
 
-	private final Serializer<Document> serializer;
-	private final Deserializer<Document> deserializer;
+	private final Serializer<Doc> serializer;
+	private final Deserializer<Doc> deserializer;
 
-	public DocumentSerde(ObjectMapper objectMapper) {
-		serializer = new DocumentSerializer(objectMapper);
-		deserializer = new DocumentDeserializer(objectMapper);
+	public DocumentSerde(Class<Doc> clazz, ObjectMapper objectMapper) {
+		serializer = new DocumentSerializer<>(objectMapper);
+		deserializer = new DocumentDeserializer<>(clazz, objectMapper);
 	}
 
 	@Override
-	public Serializer<Document> serializer() {
+	public Serializer<Doc> serializer() {
 		return serializer;
 	}
 
 	@Override
-	public Deserializer<Document> deserializer() {
+	public Deserializer<Doc> deserializer() {
 		return deserializer;
 	}
 

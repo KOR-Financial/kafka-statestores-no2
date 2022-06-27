@@ -7,7 +7,7 @@ import org.dizitart.no2.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class DocumentSerializer implements Serializer<Document> {
+class DocumentSerializer<Doc extends Document> implements Serializer<Doc> {
 
 	private static final Logger logger = LoggerFactory.getLogger(DocumentSerializer.class);
 
