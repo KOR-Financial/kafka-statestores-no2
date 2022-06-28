@@ -19,8 +19,12 @@ public class DocumentSerde<Doc extends Document> implements Serde<Doc> {
 	private final Deserializer<Doc> deserializer;
 
 	public DocumentSerde(Class<Doc> clazz, ObjectMapper objectMapper) {
-		serializer = new DocumentSerializer<>(objectMapper);
-		deserializer = new DocumentDeserializer<>(clazz, objectMapper);
+		this(new DocumentSerializer<>(objectMapper), new DocumentDeserializer<>(clazz, objectMapper));
+	}
+
+	public DocumentSerde(Serializer<Doc> serializer, Deserializer<Doc> deserializer) {
+		this.serializer = serializer;
+		this.deserializer = deserializer;
 	}
 
 	@Override

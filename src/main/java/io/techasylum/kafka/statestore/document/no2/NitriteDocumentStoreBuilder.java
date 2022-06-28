@@ -30,12 +30,12 @@ public class NitriteDocumentStoreBuilder<Key, Doc extends Document> implements S
 
     boolean enableLogging = true;
 
-    public NitriteDocumentStoreBuilder(String name, String keyFieldName, Serde<Key> keySerde, Class<Doc> docClass, ObjectMapper objectMapper) {
+    public NitriteDocumentStoreBuilder(String name, String keyFieldName, Serde<Key> keySerde, DocumentSerde<Doc> valueSerde, Function<Document, Doc> documentConverter) {
         this.name = name;
         this.keySerde = keySerde;
-        this.valueSerde = new DocumentSerde<>(docClass, objectMapper);
+        this.valueSerde = valueSerde;
         this.keyFieldName = keyFieldName;
-        this.documentConverter = (document) -> objectMapper.convertValue(document, docClass);
+        this.documentConverter = documentConverter;
     }
 
     @Override
