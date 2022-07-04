@@ -63,7 +63,7 @@ public class CompositeCursor<Doc extends Document> implements Cursor<Doc> {
     }
 
     @JsonCreator
-    protected CompositeCursor(@JsonProperty("documents") Map<NitriteId, Doc> documents, @JsonProperty("resultSet") Set<NitriteId> resultSet,
+    public CompositeCursor(@JsonProperty("documents") Map<NitriteId, Doc> documents, @JsonProperty("resultSet") Set<NitriteId> resultSet,
             @JsonProperty("nextOffsets") Map<Integer, Integer> nextOffsets, @JsonProperty("hasMore") boolean hasMore, @JsonProperty("totalCount") int totalCount) {
         this.documents = documents;
         this.nextOffsets = nextOffsets;
