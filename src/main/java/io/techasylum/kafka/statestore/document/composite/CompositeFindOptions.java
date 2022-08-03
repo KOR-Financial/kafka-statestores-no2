@@ -169,7 +169,9 @@ public class CompositeFindOptions extends FindOptions {
     public Integer getOffsetForPartition(int partition) {
         Integer offset = offsetsByPartition.get(partition);
         if (offset == null) {
-            logger.warn("No offset defined for partition {}. Falling back to offset 0.", partition);
+            if (logger.isDebugEnabled()) {
+                logger.debug("No offset defined for partition {}. Falling back to offset 0.", partition);
+            }
             offset = 0;
         }
         return offset;
