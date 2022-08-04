@@ -380,7 +380,7 @@ public class NitriteDocumentStore<Key, Doc extends Document> implements Writable
             K k = store.serdes.keyFrom(key);
             D v = store.serdes.valueFrom(value);
             if (v == null) {
-                store.delete(k);
+                store.remove(k);
             } else {
                 store.store(k, v);
             }
