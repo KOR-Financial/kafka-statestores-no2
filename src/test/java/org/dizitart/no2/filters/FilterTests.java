@@ -59,6 +59,14 @@ class FilterTests {
 	}
 
 	@Test
+	void shouldDeserializePatchedEqualsFilter() throws JsonProcessingException {
+		String json = "{\"type\":\"p-eq\",\"field\":\"tradeId\",\"value\":\"some id\"}";
+		PatchedEqualsFilter filter = (PatchedEqualsFilter) mapper.readValue(json, Filter.class);
+		assertThat(filter.getField()).isEqualTo("tradeId");
+		assertThat(filter.getValue()).isEqualTo("some id");
+	}
+
+	@Test
 	void shouldDeserializeNotFilter() throws JsonProcessingException {
 		String json = "{\"type\":\"not\",\"filter\":{\"type\":\"eq\",\"field\":\"tradeId\",\"value\":\"some id\"}}";
 		NotFilter filter = (NotFilter) mapper.readValue(json, Filter.class);
@@ -91,7 +99,15 @@ class FilterTests {
 
 	@Test
 	void shouldDeserializeGreaterThanFilter() throws JsonProcessingException {
-		String json = "{\"type\":\"gt\",\"field\":\"tradeId\",\"comparable\":1}";
+		String json = "{\"type\":\"gt\",\"field\":\"tradeId\",\"value\":1}";
+		GreaterThanFilter filter = (GreaterThanFilter) mapper.readValue(json, Filter.class);
+		assertThat(filter.getField()).isEqualTo("tradeId");
+		assertThat(filter.getComparable()).isEqualByComparingTo(1);
+	}
+
+	@Test
+	void shouldDeserializePatchedGreaterThanFilter() throws JsonProcessingException {
+		String json = "{\"type\":\"p-gt\",\"field\":\"tradeId\",\"value\":1}";
 		PatchedGreaterThanFilter filter = (PatchedGreaterThanFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);
@@ -99,7 +115,15 @@ class FilterTests {
 
 	@Test
 	void shouldDeserializeGreaterEqualFilter() throws JsonProcessingException {
-		String json = "{\"type\":\"gte\",\"field\":\"tradeId\",\"comparable\":1}";
+		String json = "{\"type\":\"gte\",\"field\":\"tradeId\",\"value\":1}";
+		GreaterEqualFilter filter = (GreaterEqualFilter) mapper.readValue(json, Filter.class);
+		assertThat(filter.getField()).isEqualTo("tradeId");
+		assertThat(filter.getComparable()).isEqualByComparingTo(1);
+	}
+
+	@Test
+	void shouldDeserializePatchedGreaterEqualFilter() throws JsonProcessingException {
+		String json = "{\"type\":\"p-gte\",\"field\":\"tradeId\",\"value\":1}";
 		PatchedGreaterEqualFilter filter = (PatchedGreaterEqualFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);
@@ -107,7 +131,15 @@ class FilterTests {
 
 	@Test
 	void shouldDeserializeLesserThanFilter() throws JsonProcessingException {
-		String json = "{\"type\":\"lt\",\"field\":\"tradeId\",\"comparable\":1}";
+		String json = "{\"type\":\"lt\",\"field\":\"tradeId\",\"value\":1}";
+		LesserThanFilter filter = (LesserThanFilter) mapper.readValue(json, Filter.class);
+		assertThat(filter.getField()).isEqualTo("tradeId");
+		assertThat(filter.getComparable()).isEqualByComparingTo(1);
+	}
+
+	@Test
+	void shouldDeserializePatchedLesserThanFilter() throws JsonProcessingException {
+		String json = "{\"type\":\"p-lt\",\"field\":\"tradeId\",\"value\":1}";
 		PatchedLesserThanFilter filter = (PatchedLesserThanFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);
@@ -115,7 +147,15 @@ class FilterTests {
 
 	@Test
 	void shouldDeserializeLesserEqualFilter() throws JsonProcessingException {
-		String json = "{\"type\":\"lte\",\"field\":\"tradeId\",\"comparable\":1}";
+		String json = "{\"type\":\"lte\",\"field\":\"tradeId\",\"value\":1}";
+		LesserEqualFilter filter = (LesserEqualFilter) mapper.readValue(json, Filter.class);
+		assertThat(filter.getField()).isEqualTo("tradeId");
+		assertThat(filter.getComparable()).isEqualByComparingTo(1);
+	}
+
+	@Test
+	void shouldDeserializePatchedLesserEqualFilter() throws JsonProcessingException {
+		String json = "{\"type\":\"p-lte\",\"field\":\"tradeId\",\"value\":1}";
 		PatchedLesserEqualFilter filter = (PatchedLesserEqualFilter) mapper.readValue(json, Filter.class);
 		assertThat(filter.getField()).isEqualTo("tradeId");
 		assertThat(filter.getComparable()).isEqualByComparingTo(1);

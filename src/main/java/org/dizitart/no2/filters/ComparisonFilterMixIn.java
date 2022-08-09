@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public abstract class ComparisonFilterMixIn extends BaseFilterMixIn {
 
 	@JsonCreator
-	ComparisonFilterMixIn(@JsonProperty("field") String field, @JsonProperty("comparable") Object comparable) {
+	ComparisonFilterMixIn(@JsonProperty("field") String field, @JsonProperty("value") Object value) {
 	}
 
 }
